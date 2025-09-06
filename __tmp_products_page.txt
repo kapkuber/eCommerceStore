@@ -1,0 +1,25 @@
+import { prisma } from '@/lib/db'; // export a singleton PrismaClient from here
+
+export default async function ProductsPage() {
+  const products = await prisma.product.findMany({
+    where: { active: true },
+    include: { images: { orderBy: { sort: 'asc' }, take: 1 }, variants: true },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  return (
+    <main className="container mx-auto p-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {products.map(p => (
+        <a key={p.id} href={`/products/${p.slug}`} className="rounded-2xl border p-4 hover:shadow">
+          <img className="w-full rounded-xl aspect-video object-cover" src={p.images[0]?.url || ''} alt={p.images[0]?.alt || p.title}/>
+          <h3 className="mt-3 text-lg font-semibold">{p.title}</h3>
+          <p className="text-sm text-muted-foreground">{p.brand}</p>
+          <p className="mt-2 font-medium">
+            ${((p.variants[0]?.priceCents ?? 0) / 100).toFixed(2)}
+          </p>
+        </a>
+      ))}
+    </main>
+  );
+}
+
