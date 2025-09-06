@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Ecommerce',
+  title: 'eCommerce',
   description: 'Demo ecommerce app',
 };
 
@@ -14,4 +14,3 @@ export default function RootLayout({
     </html>
   );
 }
-
