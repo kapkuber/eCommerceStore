@@ -15,7 +15,7 @@
     "@stripe/react-stripe-js": "^4.0.0",
     "@stripe/stripe-js": "^7.9.0",
     "@tanstack/react-query": "^5.87.1",
-    "ioredis": "^5.7.0",
+    "ioredis": "^1.0.0",
     "next": "15.5.2",
     "next-auth": "^4.24.11",
     "pg": "^8.16.3",
@@ -27,20 +27,22 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^20.19.13",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9",
-    "eslint-config-next": "15.5.2",
+    "eslint-config-next": "^0.2.4",
     "eslint-config-prettier": "^10.1.8",
+    "postcss": "^8.5.6",
     "prettier": "^3.6.2",
     "prisma": "^6.15.0",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.1.13",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
   "prisma": {
-    "seed": "ts-node --transpile-only prisma/seed.ts"
+    "seed": "node prisma/seed.js"
   }
 }

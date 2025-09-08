@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* You can extend base styles here if desired */
+/* Example minimal tweaks for better defaults */
+html, body {
+  height: 100%;
+}
+
+/* Smoothen images in cards */
+img { image-rendering: auto; }
+
