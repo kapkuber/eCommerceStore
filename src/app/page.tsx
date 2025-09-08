@@ -1,10 +1,12 @@
 // app/page.tsx
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
-type ProductWithRelations = Awaited<
-  ReturnType<typeof prisma.product.findMany>
->[number];
+// Use Prisma helper type to match the `include` below
+type ProductWithRelations = Prisma.ProductGetPayload<{
+  include: { images: true; variants: true };
+}>;
 
 export default async function HomePage() {
   const products = await prisma.product.findMany({
