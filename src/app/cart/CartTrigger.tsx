@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import CartSlideOver from "./CartSlideOver";
+import CartSlideOver from "./cartSlideOver";
 
 export default function CartTrigger() {
   const [open, setOpen] = useState(false);

@@ -39,6 +39,11 @@ class MemoryRedis {
     this.ttl.set(key, Date.now() + seconds * 1000);
     return 1;
   }
+  async hdel(key: string, field: string) {
+    this.alive(key);
+    this.store.get(key)?.delete(field);
+    return 1;
+  }
 }
 
 let client: RedisClient | null = null;
