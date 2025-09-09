@@ -45,13 +45,71 @@ export default function CartSlideOver({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  async function bumpQty(variantId: string, delta: number) {
-    await fetch("/api/cart/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ variantId, delta }),
+  const inFlightRef = useRef<Record<string, number>>({}); // accumulate fast clicks per variant
+  const debounceRef = useRef<Record<string, any>>({});
+
+  function applyLocalDelta(variantId: string, delta: number) {
+    setData(prev => {
+      // clone shallow
+      const items = prev.items.map(i => ({ ...i }));
+      const idx = items.findIndex(i => i.id === variantId);
+      if (idx === -1) return prev;
+
+      const it = items[idx];
+      const nextQty = Math.max(0, it.qty + delta);
+
+      // adjust subtotal optimistically
+      const newTotal = Math.max(
+        0,
+        prev.total + delta * it.priceCents
+      );
+
+      if (nextQty === 0) {
+        items.splice(idx, 1);
+      } else {
+        it.qty = nextQty;
+        it.line = nextQty * it.priceCents;
+        items[idx] = it;
+      }
+
+      return { items, total: newTotal };
     });
-    await fetchCart();
+  }
+
+  async function sendAccumulatedDelta(variantId: string) {
+    const delta = inFlightRef.current[variantId] || 0;
+    if (!delta) return;
+    inFlightRef.current[variantId] = 0;
+
+    try {
+      await fetch("/api/cart/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variantId, delta }),
+      });
+      // optional: re-sync from server if you don’t fully trust local math
+      // await fetchCart();
+    } catch (e) {
+      // rollback by applying the opposite delta
+      applyLocalDelta(variantId, -delta);
+      console.error("Failed to update cart:", e);
+    }
+  }
+
+  function bumpQty(variantId: string, delta: number) {
+    // 1) Optimistically update UI instantly
+    applyLocalDelta(variantId, delta);
+
+    // 2) Accumulate rapid clicks and send once after a short pause
+    inFlightRef.current[variantId] = (inFlightRef.current[variantId] || 0) + delta;
+
+    // clear previous debounce
+    if (debounceRef.current[variantId]) {
+      clearTimeout(debounceRef.current[variantId]);
+    }
+    debounceRef.current[variantId] = setTimeout(() => {
+      sendAccumulatedDelta(variantId);
+    }, 150); // 150–250ms feels instant but batches bursts
   }
 
   const subtotal = data.total;
@@ -93,7 +151,7 @@ export default function CartSlideOver({
 
         {/* Free-shipping banner */}
         <div className="border-b bg-amber-50 px-6 py-3">
-          <p className="text-sm text-neutral-900">
+          <p className="text-sm text-neutral-900 text-center">
             {earnedFreeShip ? (
               <>Congrats! You&apos;ve earned <span className="font-semibold">Free Shipping</span>!</>
             ) : (
@@ -175,14 +233,14 @@ export default function CartSlideOver({
           <form method="post" action="/api/stripe/checkout">
             <input type="hidden" name="amount" value={subtotal} />
             <button
-              className="flex w-full items-center justify-center rounded-full bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="flex w-full items-center justify-center rounded-full bg-black px-4 py-4 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
               disabled={data.items.length === 0}
             >
               Checkout • ${(subtotal / 100).toFixed(2)}
             </button>
           </form>
 
-          <p className="mt-2 text-[11px] leading-4 text-neutral-500">
+          <p className="mt-2 text-[11px] leading-4 text-neutral-500 text-center">
             By clicking the Checkout button, I represent I agree to the Terms.
           </p>
         </div>
