@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const emailOk = /.+@.+\..+/.test(email);
   const passOk = password.length >= 8 && password.length <= 256;
   if (!emailOk || !passOk) {
-    return NextResponse.json({ error: 'Invalid email or password format' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid email or password < 8 characters' }, { status: 400 });
   }
 
   try {
