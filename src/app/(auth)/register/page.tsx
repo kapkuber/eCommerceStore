@@ -27,16 +27,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-12">
-      <h1 className="mb-6 text-2xl font-semibold">Create account</h1>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded border px-3 py-2"
-        />
+    <main className="mx-auto max-w-md px-6 min-h-[75vh] grid place-items-center">
+      <section className="w-full">
+        <h1 className="mb-6 text-2xl font-semibold text-center">Create Account</h1>
+        <form onSubmit={onSubmit} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+          />
         <input
           type="email"
           placeholder="Email"
@@ -53,13 +54,13 @@ export default function RegisterPage() {
           required
           className="w-full rounded border px-3 py-2"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button className="w-full rounded bg-black px-4 py-2 text-white">Register</button>
-      </form>
-      <p className="mt-4 text-sm">
-        Already have an account? <a className="underline" href="/login">Login</a>
-      </p>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button className="w-full rounded bg-black px-4 py-2 text-white">Register</button>
+        </form>
+        <p className="mt-4 text-sm text-center">
+          Already have an account? <a className="underline" href="/login">Login</a>
+        </p>
+      </section>
     </main>
   );
 }
-

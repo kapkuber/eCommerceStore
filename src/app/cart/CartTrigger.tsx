@@ -14,7 +14,7 @@ export default function CartTrigger() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="rounded-full border border-white/25 px-3 py-1 text-sm hover:bg-white hover:text-black"
+        className="hover:opacity-80"
       >
         Cart
       </button>
