@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## eCommerce — Next.js + Prisma + NextAuth + Redis
 
-## Getting Started
+Modern, minimalist storefront built on the Next.js App Router with a PostgreSQL-backed product catalog, credential-based auth, and a Redis‑powered cart with a slide‑over UI. Includes an admin dashboard integrated into the account page for adding, editing, and deleting products.
 
-First, run the development server:
+## Tech Stack
+
+- Next.js 15 (App Router) + React 19
+- TypeScript
+- Tailwind CSS v4 via `@tailwindcss/postcss` (see `src/app/globals.css`)
+- Prisma ORM + PostgreSQL (schema in `public/prisma/schema.prisma`)
+- NextAuth (Credentials provider, JWT sessions)
+- Passwords: salted scrypt hashing (`src/lib/password.ts`)
+- Redis cart via `ioredis` with a dev in‑memory fallback (`src/lib/redis.ts`)
+- Stripe checkout (minimal demo endpoints)
+
+## Key Features
+
+- Home page product grid (3 per row), data from DB (`src/app/page.tsx`)
+- Product detail page with “Add to cart” (`src/app/products/[slug]/page.tsx`)
+- Cart slide‑over with quantity controls (`src/app/cart/*`)
+- Admin product management inside Account page (`/account`): list, add, edit, delete
+- DB revalidation on catalog changes to update the storefront immediately
+
+## Notable Files
+
+- Database
+  - `public/prisma/schema.prisma` — full relational schema
+  - `public/prisma/seed.js` — seeds categories, products, and two users with hashed passwords
+- Auth
+  - `src/lib/auth.ts` — NextAuth config (Credentials provider)
+  - `src/lib/password.ts` — salted scrypt hash/verify helpers
+  - `src/app/api/auth/[...nextauth]/route.ts` — NextAuth handler
+  - `src/app/(auth)/login/page.tsx` and `src/app/(auth)/register/page.tsx`
+- Catalog
+  - `src/app/page.tsx` — product grid
+  - `src/app/products/[slug]/page.tsx` — product detail
+- Cart
+  - `src/lib/redis.ts` — Redis client with memory fallback for local dev
+  - `src/app/api/cart/*` — add, get, update
+  - `src/app/cart/CartTrigger.tsx` and `src/app/cart/cartSlideOver.tsx`
+- Admin
+  - `src/app/account/page.tsx` — account + admin products dashboard
+  - `src/app/account/products/new/page.tsx` — add product form
+  - `src/app/api/admin/products/route.ts` — create
+  - `src/app/api/admin/products/[id]/route.ts` — update
+  - `src/app/api/admin/products/[id]/delete/route.ts` — delete
+
+## Setup
+
+1) Install
+
+```bash
+npm install
+```
+
+2) Environment
+
+Create `.env.local` with at least:
+
+```
+DATABASE_URL=postgres://user:pass@host:5432/db
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=<long-random-string>
+# Optional for real Redis; if not set, a dev in-memory cart is used
+# REDIS_URL=redis://localhost:6379
+
+# Optional for Stripe demo
+# STRIPE_SECRET_KEY=sk_test_...
+# STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+3) Database & Seed
+
+Run migrations and seed using the project’s Prisma schema under `public/prisma`:
+
+```bash
+npx prisma migrate dev --schema public/prisma/schema.prisma
+npx prisma db seed --schema public/prisma/schema.prisma
+```
+
+Seeded accounts:
+- `admin@example.com` / `admin123`
+- `customer@example.com` / `customer123`
+
+4) Dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## How It Works
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Authentication
+  - NextAuth Credentials provider checks the user by email with Prisma and verifies a salted scrypt hash. JWT sessions include `user.id` and `user.role`.
+- Cart
+  - Add-to-cart posts to `/api/cart/add` and fires a `cart:open` event. The drawer fetches `/api/cart` to join cart lines (in Redis) with product details (via Prisma). If `REDIS_URL` is unset, a dev in‑memory store is used.
+- Admin product management
+  - Admin sees a product dashboard on `/account`. Create/update/delete hit `/api/admin/products...` routes which revalidate `/` and `/account` to refresh UI.
+- Styling
+  - Tailwind v4 utilities loaded via `@tailwindcss/postcss` and `src/app/globals.css`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Common Issues
 
-## Learn More
+- NextAuth decryption error: set a stable `NEXTAUTH_SECRET`, restart dev, and clear NextAuth cookies.
+- Redis “send_command … undefined”: if no `REDIS_URL`, the app uses a memory fallback; set `REDIS_URL` to a real instance for persistence.
+- Params must be awaited (Next.js 15): dynamic route/page/route handlers read `params` as a promise (e.g., `const { id } = await params`).
 
-To learn more about Next.js, take a look at the following resources:
+## Operational Notes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Production should use a real Redis and a strong, rotated `NEXTAUTH_SECRET`.
+- Password policy checks and rate limiting can be added to the auth routes for extra protection.
