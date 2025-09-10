@@ -26,7 +26,7 @@ export default async function HomePage() {
       {/* Hero */}
       <section className="mt-10 grid gap-6 rounded-2xl border border-neutral-200 bg-white p-0 sm:gap-8 lg:grid-cols-2">
         <div className="flex items-center p-8 sm:p-12">
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             All products
           </h1>
         </div>

@@ -30,7 +30,7 @@ export default async function AccountPage() {
       {isAdmin && (
         <section className="mt-8">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Products</h2>
+            <h2 className="text-2xl font-semibold">Products</h2>
             <a href="/account/products/new" className="rounded bg-black px-4 py-2 text-white">Add Product</a>
           </div>
           <ul className="mt-4 divide-y rounded-2xl border">
