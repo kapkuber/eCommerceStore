@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import SearchTrigger from "./search/SearchTrigger";
 import CartTrigger from "./cart/CartTrigger"; // ⬅️ direct import
 
 export const metadata: Metadata = {
@@ -16,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
             <Link href="/" className="text-xl font-semibold tracking-tight">eCommerce</Link>
             <div className="flex items-center gap-4 text-sm">
-              <Link href="/" className="hover:opacity-80">Search</Link>
+              <SearchTrigger />
               <Link href="/" className="hover:opacity-80">About</Link>
               <Link href="/" className="hover:opacity-80">Learn</Link>
               <Link href="/account" className="hover:opacity-80">Account</Link>
