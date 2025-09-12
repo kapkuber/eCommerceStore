@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type CartItem = {
   id: string;
@@ -17,13 +17,16 @@ type CartData = { items: CartItem[]; total: number };
 
 const FREE_SHIPPING_THRESHOLD = 8000; // $80
 
-export default function CartSlideOver({
-  open,
-  onClose,
-}: { open: boolean; onClose: () => void }) {
+export default function CartSlideOver({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CartData>({ items: [], total: 0 });
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // derive total quantity from current state
+  const totalQty = useMemo(
+    () => data.items.reduce((n, it) => n + (it.qty ?? 0), 0),
+    [data.items]
+  );
 
   async function fetchCart() {
     setLoading(true);
@@ -31,6 +34,10 @@ export default function CartSlideOver({
       const res = await fetch("/api/cart", { cache: "no-store" });
       const json: CartData = await res.json();
       setData(json);
+
+      // broadcast total quantity (not line count)
+      const qty = json.items.reduce((n, it) => n + (it.qty ?? 0), 0);
+      window.dispatchEvent(new CustomEvent("cart:count", { detail: qty }));
     } finally {
       setLoading(false);
     }
@@ -50,19 +57,13 @@ export default function CartSlideOver({
 
   function applyLocalDelta(variantId: string, delta: number) {
     setData(prev => {
-      // clone shallow
       const items = prev.items.map(i => ({ ...i }));
       const idx = items.findIndex(i => i.id === variantId);
       if (idx === -1) return prev;
 
       const it = items[idx];
       const nextQty = Math.max(0, it.qty + delta);
-
-      // adjust subtotal optimistically
-      const newTotal = Math.max(
-        0,
-        prev.total + delta * it.priceCents
-      );
+      const newTotal = Math.max(0, prev.total + delta * it.priceCents);
 
       if (nextQty === 0) {
         items.splice(idx, 1);
@@ -70,6 +71,13 @@ export default function CartSlideOver({
         it.qty = nextQty;
         it.line = nextQty * it.priceCents;
         items[idx] = it;
+      }
+
+      if (typeof window !== "undefined") {
+        const qty = items.reduce((n, i) => n + (i.qty ?? 0), 0);
+        queueMicrotask(() => {
+          window.dispatchEvent(new CustomEvent("cart:count", { detail: qty }));
+        });
       }
 
       return { items, total: newTotal };
@@ -145,7 +153,7 @@ export default function CartSlideOver({
             X
           </button>
           <h2 id="cart-title" className="text-lg font-semibold text-neutral-900">
-            My Cart ({data.items.length})
+            My Cart ({totalQty})
           </h2>
         </div>
 
