@@ -90,14 +90,14 @@ export default function SearchTrigger() {
 
   return (
     <>
-      {/* Trigger: just the word “Search” (no icon/outline) */}
       <button
         onClick={() => setOpen(true)}
-        className="hover:opacity-80"
+        className="group flex flex-col items-center gap-1 hover:opacity-90"
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        Search
+        <SearchIcon className="h-6 w-6" />
+        <span className="text-xs tracking-wide">SEARCH</span>
       </button>
 
       {/* Overlay */}

@@ -1,8 +1,12 @@
+// app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import SearchTrigger from "./search/SearchTrigger";
-import CartTrigger from "./cart/CartTrigger"; // ⬅️ direct import
+import CartTrigger from "./cart/CartTrigger";
+
+// icons for other nav items
+import { Info, Lightbulb, User } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "eCommerce",
@@ -15,18 +19,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full text-neutral-900 antialiased">
         <header className="sticky top-0 z-40 border-b bg-black text-white">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-            <Link href="/" className="text-xl font-semibold tracking-tight">eCommerce</Link>
-            <div className="flex items-center gap-4 text-sm">
+            <Link href="/" className="text-2xl font-semibold tracking-tight">
+              eCommerce
+            </Link>
+
+            <nav className="flex items-center gap-8 text-xs">
+              {/* SearchTrigger renders just the word “Search” per your setup */}
               <SearchTrigger />
-              <Link href="/" className="hover:opacity-80">About</Link>
-              <Link href="/" className="hover:opacity-80">Learn</Link>
-              <Link href="/account" className="hover:opacity-80">Account</Link>
-              <CartTrigger /> {/* client component */}
-            </div>
+
+              {/* Icon above label links */}
+              <NavIconLink href="/about" icon={Info} label="About" />
+              <NavIconLink href="/learn" icon={Lightbulb} label="Learn" />
+              <NavIconLink href="/account" icon={User} label="Account" />
+
+              {/* CartTrigger now accepts className; it renders its own icon + label */}
+              <CartTrigger className="group flex flex-col items-center gap-1 hover:opacity-90" />
+            </nav>
           </div>
         </header>
+
         {children}
       </body>
     </html>
+  );
+}
+
+/* ---------- helper ---------- */
+function NavIconLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+}) {
+  return (
+    <Link href={href} className="group flex flex-col items-center gap-1 hover:opacity-90">
+      <Icon className="h-6 w-6" />
+      <span className="tracking-wide">{label.toUpperCase()}</span>
+    </Link>
   );
 }
