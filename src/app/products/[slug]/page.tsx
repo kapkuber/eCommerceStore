@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db';
 import AddToCartButton from '@/app/products/AddToCartButton';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export default async function ProductPage({
   params,
@@ -8,10 +10,13 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
 
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    include: { variants: true, images: { orderBy: { sort: 'asc' } } },
-  });
+  const [session, product] = await Promise.all([
+    getServerSession(authOptions),
+    prisma.product.findUnique({
+      where: { slug },
+      include: { variants: true, images: { orderBy: { sort: 'asc' } } },
+    }),
+  ]);
 
   if (!product) {
     return <main className="p-6">Not found</main>;
@@ -34,8 +39,25 @@ export default async function ProductPage({
         <div className="space-y-3">
           <AddToCartButton variantId={product.variants[0]?.id} />
         </div>
+        {(session && (session.user as any)?.role === 'ADMIN') && (
+          <div className="mt-4 rounded border p-3 text-sm text-neutral-700">
+            <div className="font-medium mb-2">Inventory (Admin)</div>
+            {product.variants.map((v) => {
+              const available = Math.max(0, (v.inventoryOnHand ?? 0) - (v.inventoryReserved ?? 0));
+              return (
+                <div key={v.id} className="flex items-center justify-between py-1">
+                  <div className="truncate">SKU: {v.sku}</div>
+                  <div className="text-right">
+                    <span className="mr-3">On hand: {v.inventoryOnHand}</span>
+                    <span className="mr-3">Reserved: {v.inventoryReserved}</span>
+                    <span>Available: {available}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );
 }
-

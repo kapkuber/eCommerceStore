@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               eCommerce
             </Link>
 
-            <nav className="flex items-center gap-8 text-xs">
+            <nav className="flex items-center gap-6 text-xs">
               {/* SearchTrigger renders just the word “Search” per your setup */}
               <SearchTrigger />
 
