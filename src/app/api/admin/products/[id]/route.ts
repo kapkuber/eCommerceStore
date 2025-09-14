@@ -21,6 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const sku = String(fd.get('sku') || '').trim();
   const imageUrl = String(fd.get('imageUrl') || '').trim();
   const price = Number(String(fd.get('price') || 0));
+  const categoryIds = fd.getAll('categories').map((v) => String(v));
 
   if (!title || !slug || !sku || !imageUrl || !(price >= 0)) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -50,6 +51,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         variants: variantId
           ? { update: { where: { id: variantId }, data: { sku, priceCents, currency: 'usd' } } }
           : { create: [{ sku, priceCents, currency: 'usd', attributes: null, inventoryOnHand: 0 }] },
+        // Replace category assignments with submitted ones
+        categories: {
+          deleteMany: {},
+          create: categoryIds.map((cid) => ({ category: { connect: { id: cid } } })),
+        },
       },
     });
 

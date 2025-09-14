@@ -58,7 +58,7 @@ export default async function HomePage() {
                   Categories
                 </p>
                 <ul className="mt-3 space-y-3 text-sm">
-                  {["Best Sellers", "Keyboards", "Mouses", "Laptops", "Chargers"].map(
+                  {["Best Sellers", "Accessories", "Audio", "Hubs & Docks", "Keyboards"].map(
                     (label) => (
                       <li key={label} className="flex items-center gap-3">
                         <input

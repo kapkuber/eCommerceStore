@@ -1,11 +1,14 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 
 export default async function NewProductPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect('/login');
   if ((session.user as any)?.role !== 'ADMIN') redirect('/account');
+
+  const categories = await prisma.category.findMany({ orderBy: { name: 'asc' } });
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -48,6 +51,21 @@ export default async function NewProductPage() {
         <div>
           <label className="block text-sm font-medium">Description</label>
           <textarea name="description" rows={4} className="mt-1 w-full rounded border px-3 py-2" />
+        </div>
+
+        <div>
+          <div className="mb-1 text-sm font-medium">Categories</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {categories.map((c) => (
+              <label key={c.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="categories" value={c.id} />
+                <span>{c.name}</span>
+              </label>
+            ))}
+            {categories.length === 0 && (
+              <div className="text-sm text-neutral-500">No categories created.</div>
+            )}
+          </div>
         </div>
         <button className="rounded bg-black px-4 py-2 text-white">Create</button>
       </form>

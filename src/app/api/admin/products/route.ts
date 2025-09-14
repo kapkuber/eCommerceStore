@@ -14,6 +14,7 @@ export async function POST(req: Request) {
 
   const ct = req.headers.get('content-type') || '';
   let title = '', slug = '', description = '', brand = '', sku = '', imageUrl = '';
+  let categoryIds: string[] = [];
   let price = 0;
   if (ct.includes('application/json')) {
     const body = await req.json();
@@ -24,6 +25,10 @@ export async function POST(req: Request) {
     sku = String(body.sku || '').trim();
     imageUrl = String(body.imageUrl || '').trim();
     price = Number(body.price || 0);
+    const cats = body.categoryIds || body.categories;
+    if (Array.isArray(cats)) {
+      categoryIds = cats.map((x: any) => String(x)).filter(Boolean);
+    }
   } else {
     const fd = await req.formData();
     title = String(fd.get('title') || '').trim();
@@ -33,6 +38,8 @@ export async function POST(req: Request) {
     sku = String(fd.get('sku') || '').trim();
     imageUrl = String(fd.get('imageUrl') || '').trim();
     price = Number(String(fd.get('price') || 0));
+    const cats = fd.getAll('categories');
+    if (Array.isArray(cats)) categoryIds = cats.map((v) => String(v));
   }
 
   if (!title || !slug || !sku || !imageUrl || !(price >= 0)) {
@@ -52,6 +59,9 @@ export async function POST(req: Request) {
         variants: {
           create: [{ sku, priceCents, currency: 'usd', attributes: null, inventoryOnHand: 0 }],
         },
+        categories: categoryIds.length
+          ? { create: categoryIds.map((id) => ({ category: { connect: { id } } })) }
+          : undefined,
       },
       include: { variants: true, images: true },
     });
