@@ -14,9 +14,11 @@ export async function POST(req: Request) {
   }
 
   const cookieStore = await cookies();
-  const cartId = cookieStore.get("cart_id")?.value;
+  let cartId = cookieStore.get("cart_id")?.value;
   if (!cartId) {
-    return NextResponse.json({ ok: true }); // nothing to update
+    cartId = crypto.randomUUID();
+    const c = await cookies();
+    c.set("cart_id", cartId, { httpOnly: true, sameSite: "lax", path: "/" });
   }
 
   const redis = await getRedis(); // ⬅️ resolve the client
@@ -39,5 +41,7 @@ export async function POST(req: Request) {
     await redis.hset(key, variantId, String(next));
   }
 
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  if (cartId) res.cookies.set("cart_id", cartId, { httpOnly: true, sameSite: "lax", path: "/" });
+  return res;
 }

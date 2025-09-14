@@ -1,0 +1,29 @@
+[33m2914906[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33mb12c91c[m HEAD@{1}: reset: moving to HEAD~1
+[33m1fbe1af[m[33m ([m[1;31morigin/master[m[33m)[m HEAD@{2}: commit: product variant + admin dashboard overhaul
+[33mb12c91c[m HEAD@{3}: commit: quick buy
+[33m2914906[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m HEAD@{4}: commit: minor filter change
+[33m04ead7b[m HEAD@{5}: commit: sort
+[33mcb559ea[m HEAD@{6}: commit: filter by category
+[33mb839d90[m HEAD@{7}: commit: categories
+[33m95780e5[m HEAD@{8}: commit: out of stock
+[33m3c6ba50[m HEAD@{9}: commit: imrpoved slug images
+[33m9ae7c73[m HEAD@{10}: commit: better slug
+[33m39fa052[m HEAD@{11}: commit: filter names
+[33mb45620d[m HEAD@{12}: commit: admin stock dashboard
+[33mc900713[m HEAD@{13}: commit: cart badge
+[33m5418515[m HEAD@{14}: commit: button icons
+[33mc25cdfd[m HEAD@{15}: commit: search implementation
+[33m36f64d9[m HEAD@{16}: commit: readme
+[33m24404f2[m HEAD@{17}: commit: updated admin dashboard
+[33mdadab64[m HEAD@{18}: commit: admin prodcut dashboard
+[33mf9e4649[m HEAD@{19}: commit: better sign out
+[33m9642827[m HEAD@{20}: commit: account login
+[33mb41d7a1[m HEAD@{21}: commit: improved cart
+[33m70574b9[m HEAD@{22}: commit: cart slide over
+[33mcb7b911[m HEAD@{23}: commit: minor fix
+[33m81080cd[m HEAD@{24}: commit: tailwind + db seeding
+[33m5668ea8[m HEAD@{25}: commit: updated main page
+[33m1cff6d8[m HEAD@{26}: commit: stripe api + prisma setup
+[33mf22eaa5[m HEAD@{27}: commit: initial commit
+[33mb2a79e0[m HEAD@{28}: commit (initial): Initial commit from Create Next App

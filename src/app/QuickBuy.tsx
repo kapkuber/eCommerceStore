@@ -22,12 +22,16 @@ export default function QuickBuy({ variants }: { variants: Variant[] }) {
 
   async function addToCart() {
     if (!variantId || outOfStock) return;
-    await fetch("/api/cart/update", {
+    await fetch("/api/cart/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ variantId, delta: 1 }),
+      body: JSON.stringify({ variantId, qty: 1 }),
     });
-    window.dispatchEvent(new CustomEvent("cart:open"));
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cart:open'));
+      }
+    }, 50);
     setOpen(false);
   }
 

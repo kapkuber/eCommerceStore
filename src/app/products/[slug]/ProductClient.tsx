@@ -215,12 +215,12 @@ function BuyBox({ variants, onVariantChange }: { variants: Variant[]; onVariantC
 
   async function addToCart() {
     if (!selected || qty < 1 || outOfStock) return;
-    await fetch("/api/cart/update", {
+    await fetch("/api/cart/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ variantId: selected, delta: qty }),
+      body: JSON.stringify({ variantId: selected, qty }),
     });
-    window.dispatchEvent(new CustomEvent("cart:open"));
+    setTimeout(() => window.dispatchEvent(new CustomEvent("cart:open")), 50);
   }
 
   return (

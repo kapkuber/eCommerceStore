@@ -8,8 +8,10 @@ export default function AddToCartButton({ variantId }: { variantId?: string }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ variantId, qty: 1 }),
     });
-    // Ask the header trigger to open the cart drawer
-    window.dispatchEvent(new CustomEvent("cart:open"));
+    // Small delay so the Set-Cookie from the response is applied
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("cart:open"));
+    }, 50);
   }
 
   return (
@@ -21,4 +23,3 @@ export default function AddToCartButton({ variantId }: { variantId?: string }) {
     </button>
   );
 }
-

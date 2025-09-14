@@ -24,6 +24,10 @@ export async function GET() {
   const items = variants.map((v) => {
     const qty = parseInt((raw as Record<string, string>)[v.id] || "0", 10);
     const line = v.priceCents * qty;
+    // Prefer variant-specific image when available
+    const attrImg = Array.isArray((v as any)?.attributes?.images) && (v as any).attributes.images.length
+      ? String((v as any).attributes.images[0])
+      : null;
     return {
       id: v.id,
       title: v.product.title,
@@ -31,7 +35,7 @@ export async function GET() {
       priceCents: v.priceCents,
       qty,
       line,
-      imageUrl: v.product.images?.[0]?.url ?? null,
+      imageUrl: attrImg,
       variantLabel: (() => {
         if (!v.attributes || typeof v.attributes !== "object") return null;
         try {
@@ -50,4 +54,3 @@ export async function GET() {
   const total = items.reduce((s, i) => s + i.line, 0);
   return NextResponse.json({ items, total });
 }
-

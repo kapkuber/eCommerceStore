@@ -43,6 +43,9 @@ export async function GET() {
       }
     }
 
+    const attrImg = Array.isArray((v as any)?.attributes?.images) && (v as any).attributes.images.length
+      ? String((v as any).attributes.images[0])
+      : null;
     return {
       id: v.id,
       title: v.product.title,
@@ -50,7 +53,7 @@ export async function GET() {
       priceCents: v.priceCents,
       qty,
       line,
-      imageUrl: v.product.images?.[0]?.url ?? null,
+      imageUrl: attrImg,
       variantLabel,
     };
   });
@@ -94,5 +97,8 @@ export async function POST(req: Request) {
   await redis.hset(key, variantId, String(newQty));
   await redis.expire(key, 60 * 60 * 24 * 7);
 
-  return NextResponse.json({ ok: true, cartId, variantId, qty: newQty });
+  const res = NextResponse.json({ ok: true, cartId, variantId, qty: newQty });
+  // Ensure cookie is set on response too (some runtimes require explicit set)
+  res.cookies.set("cart_id", cartId, { httpOnly: true, sameSite: "lax", path: "/" });
+  return res;
 }
