@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
+import SortMenu from "./SortMenu";
 
 // Use Prisma helper type to match the `include` below
 type ProductWithRelations = Prisma.ProductGetPayload<{
@@ -11,18 +12,34 @@ type ProductWithRelations = Prisma.ProductGetPayload<{
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: { category?: string | string[] };
+  searchParams: Promise<{ category?: string | string[]; sort?: string | string[] }>;
 }) {
+  const sp = await searchParams;
   const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
 
-  const selectedSlug = Array.isArray(searchParams?.category)
-    ? searchParams?.category[0]
-    : searchParams?.category;
+  const selectedSlug = Array.isArray(sp?.category) ? sp?.category[0] : sp?.category;
+
+  const sortParam = (Array.isArray(sp?.sort) ? sp?.sort[0] : sp?.sort || "newest") as
+    | "newest"
+    | "oldest"
+    | "price_desc"
+    | "price_asc";
 
   const where: Prisma.ProductWhereInput = {
     active: true,
     ...(selectedSlug ? { categories: { some: { category: { slug: selectedSlug } } } } : {}),
   };
+
+  // Compute orderBy based on sort param
+  const orderBy: Prisma.ProductOrderByWithRelationInput = (() => {
+    switch (sortParam) {
+      case "oldest":
+        return { createdAt: "asc" };
+      case "newest":
+      default:
+        return { createdAt: "desc" };
+    }
+  })();
 
   const products = await prisma.product.findMany({
     where,
@@ -30,8 +47,22 @@ export default async function HomePage({
       images: { orderBy: { sort: "asc" }, take: 1 },
       variants: true,
     },
-    orderBy: { createdAt: "desc" },
+    orderBy,
   });
+
+  // Apply price-based sorts in application code (Prisma orderBy on relation min/max isn't supported)
+  const renderedProducts = (() => {
+    if (sortParam === "price_desc" || sortParam === "price_asc") {
+      const priceOf = (p: ProductWithRelations) => {
+        const prices = (p.variants || []).map((v) => v.priceCents ?? 0);
+        if (prices.length === 0) return 0;
+        return Math.min(...prices);
+      };
+      const sorted = [...products].sort((a, b) => priceOf(a) - priceOf(b));
+      return sortParam === "price_desc" ? sorted.reverse() : sorted;
+    }
+    return products;
+  })();
 
   const heroImage = products[0]?.images?.[0]?.url;
 
@@ -91,21 +122,19 @@ export default async function HomePage({
         <div className="lg:col-span-9">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-neutral-600">
-              {products.length} Product{products.length === 1 ? "" : "s"}
+              {renderedProducts.length} Product{renderedProducts.length === 1 ? "" : "s"}
               {selectedSlug && (
                 <span className="ml-2 rounded-full border px-2 py-0.5 text-xs text-neutral-700">
                   in {categories.find((c) => c.slug === selectedSlug)?.name || selectedSlug}
                 </span>
               )}
             </p>
-            {/* Sort placeholder */}
-            <div className="text-sm text-neutral-500">
-              Sort by: <span className="font-medium text-neutral-800">Newest</span>
-            </div>
+            {/* Sort dropdown */}
+            <SortMenu current={sortParam} category={selectedSlug || null} />
           </div>
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-3">
-            {products.map((p: ProductWithRelations) => {
+            {renderedProducts.map((p: ProductWithRelations) => {
               const image = p.images?.[0];
               const priceCents = p.variants?.[0]?.priceCents ?? 0;
               const price = (priceCents / 100).toFixed(2);
