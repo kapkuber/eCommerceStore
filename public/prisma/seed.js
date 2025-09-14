@@ -38,6 +38,13 @@ async function main() {
     create: { name: 'Hubs & Docks', slug: 'hubs' },
   });
 
+  // Best Sellers collection
+  const bestSellers = await prisma.category.upsert({
+    where: { slug: 'best-sellers' },
+    update: {},
+    create: { name: 'Best Sellers', slug: 'best-sellers' },
+  });
+
   // --- Products ---
   await prisma.product.upsert({
     where: { slug: 'wireless-mouse' },
@@ -140,4 +147,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

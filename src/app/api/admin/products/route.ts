@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 export const runtime = 'nodejs';
 
@@ -36,7 +39,23 @@ export async function POST(req: Request) {
     description = String(fd.get('description') || '').trim();
     brand = String(fd.get('brand') || '').trim();
     sku = String(fd.get('sku') || '').trim();
-    imageUrl = String(fd.get('imageUrl') || '').trim();
+    // Prefer uploaded file; fallback to direct URL if provided
+    const file = fd.get('image') as File | null;
+    const directUrl = String(fd.get('imageUrl') || '').trim();
+    if (file && typeof (file as any).arrayBuffer === 'function') {
+      const buf = Buffer.from(await file.arrayBuffer());
+      const orig = (file as any).name || 'upload.bin';
+      const ext = path.extname(orig).toLowerCase() || '.bin';
+      const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.bin';
+      const name = `${randomUUID()}${safeExt}`;
+      const dir = path.join(process.cwd(), 'public', 'uploads');
+      const dest = path.join(dir, name);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(dest, buf);
+      imageUrl = `/uploads/${name}`;
+    } else {
+      imageUrl = directUrl;
+    }
     price = Number(String(fd.get('price') || 0));
     const cats = fd.getAll('categories');
     if (Array.isArray(cats)) categoryIds = cats.map((v) => String(v));

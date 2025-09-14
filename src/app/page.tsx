@@ -8,13 +8,27 @@ type ProductWithRelations = Prisma.ProductGetPayload<{
   include: { images: true; variants: true };
 }>;
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: { category?: string | string[] };
+}) {
+  const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
+
+  const selectedSlug = Array.isArray(searchParams?.category)
+    ? searchParams?.category[0]
+    : searchParams?.category;
+
+  const where: Prisma.ProductWhereInput = {
+    active: true,
+    ...(selectedSlug ? { categories: { some: { category: { slug: selectedSlug } } } } : {}),
+  };
+
   const products = await prisma.product.findMany({
-    where: { active: true },
+    where,
     include: {
       images: { orderBy: { sort: "asc" }, take: 1 },
       variants: true,
-      // add any category/collection relations you may have
     },
     orderBy: { createdAt: "desc" },
   });
@@ -57,22 +71,17 @@ export default async function HomePage() {
                 <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
                   Categories
                 </p>
-                <ul className="mt-3 space-y-3 text-sm">
-                  {["Best Sellers", "Accessories", "Audio", "Hubs & Docks", "Keyboards"].map(
-                    (label) => (
-                      <li key={label} className="flex items-center gap-3">
-                        <input
-                          id={label}
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-neutral-300 text-black focus:ring-black"
-                        />
-                        <label htmlFor={label} className="cursor-pointer">
-                          {label}
-                        </label>
-                      </li>
-                    )
-                  )}
-                </ul>
+                <div className="mt-3 grid grid-cols-1 gap-2 text-sm">
+                  <CategoryItem href="/" label="All" active={!selectedSlug} />
+                  {categories.map((c) => (
+                    <CategoryItem
+                      key={c.id}
+                      href={`/?category=${encodeURIComponent(c.slug)}`}
+                      label={c.name}
+                      active={selectedSlug === c.slug}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -82,7 +91,12 @@ export default async function HomePage() {
         <div className="lg:col-span-9">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-neutral-600">
-              {products.length} Products
+              {products.length} Product{products.length === 1 ? "" : "s"}
+              {selectedSlug && (
+                <span className="ml-2 rounded-full border px-2 py-0.5 text-xs text-neutral-700">
+                  in {categories.find((c) => c.slug === selectedSlug)?.name || selectedSlug}
+                </span>
+              )}
             </p>
             {/* Sort placeholder */}
             <div className="text-sm text-neutral-500">
@@ -143,5 +157,19 @@ export default async function HomePage() {
       {/* Bottom padding like the reference page */}
       <div className="h-16" />
     </main>
+  );
+}
+
+function CategoryItem({ label, href, active }: { label: string; href: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center justify-between rounded-lg border px-3 py-2 transition ${
+        active ? "border-black bg-neutral-50" : "border-neutral-200 hover:border-neutral-300"
+      }`}
+    >
+      <span>{label}</span>
+      {active && <span className="text-xs text-neutral-600">Selected</span>}
+    </Link>
   );
 }

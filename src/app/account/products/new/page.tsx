@@ -44,8 +44,15 @@ export default async function NewProductPage() {
             <input name="sku" required className="mt-1 w-full rounded border px-3 py-2" />
           </div>
           <div>
-            <label className="block text-sm font-medium">Image URL</label>
-            <input name="imageUrl" required className="mt-1 w-full rounded border px-3 py-2" />
+            <label className="block text-sm font-medium">Image</label>
+            <input
+              name="image"
+              type="file"
+              accept="image/*"
+              required
+              className="mt-1 w-full rounded border px-3 py-2 file:mr-3 file:rounded file:border-0 file:bg-neutral-100 file:px-3 file:py-2"
+            />
+            <p className="mt-1 text-xs text-neutral-500">Upload from your device</p>
           </div>
         </div>
         <div>
