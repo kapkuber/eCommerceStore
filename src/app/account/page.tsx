@@ -4,6 +4,11 @@ import { authOptions } from '@/lib/auth';
 import SignOutButton from './SignOutButton';
 import { prisma } from '@/lib/db';
 
+// Ensure this page is always rendered fresh to avoid SSR/CSR mismatches
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 export default async function AccountPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect('/login');

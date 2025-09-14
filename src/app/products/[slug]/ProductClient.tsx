@@ -165,7 +165,6 @@ function AdminAddImage({ productId }: { productId: string }) {
 }
 
 // ---- BUY BOX ----
-// ---------- Replace your current BuyBox with this ----------
 function BuyBox({ variants }: { variants: Variant[] }) {
   const [selected, setSelected] = useState(variants[0]?.id);
   const [qty, setQty] = useState(1);
@@ -174,6 +173,7 @@ function BuyBox({ variants }: { variants: Variant[] }) {
 
   const variant = variants.find((v) => v.id === selected);
   const price = variant?.priceCents ?? 0;
+  const outOfStock = !variant || (variant.inventoryOnHand ?? 0) <= 0;
 
   // subscription pricing
   const SUB_SAVE = 0.10;
@@ -188,7 +188,7 @@ function BuyBox({ variants }: { variants: Variant[] }) {
   }
 
   async function addToCart() {
-    if (!selected || qty < 1) return;
+    if (!selected || qty < 1 || outOfStock) return;
     await fetch("/api/cart/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -210,14 +210,19 @@ function BuyBox({ variants }: { variants: Variant[] }) {
               className={`rounded-full px-3 py-1.5 text-sm border transition ${
                 v.id === selected
                   ? "border-black bg-black text-white"
-                  : "border-neutral-300 hover:bg-neutral-50"
+                  : `border-neutral-300 hover:bg-neutral-50 ${
+                      (v.inventoryOnHand ?? 0) <= 0 ? "opacity-50" : ""
+                    }`
               }`}
-              title={v.sku || undefined}
+              title={(v.inventoryOnHand ?? 0) <= 0 ? "Out of stock" : v.sku || undefined}
             >
               {variantDisplay(v)}
             </button>
           ))}
         </div>
+        {outOfStock && (
+          <div className="mt-2 text-sm font-medium text-red-600">Out of stock</div>
+        )}
       </div>
 
       {/* Subscribe & Save card */}
@@ -321,7 +326,9 @@ function BuyBox({ variants }: { variants: Variant[] }) {
 
         <button
           onClick={addToCart}
-          className="flex-1 rounded-full bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700"
+          className={`flex-1 rounded-full px-5 py-3 font-semibold text-white ${
+            outOfStock ? "bg-green-300/50 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+          }`}
         >
           Add to Cart • ${ (total / 100).toFixed(2) }
         </button>
