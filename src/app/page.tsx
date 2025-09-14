@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import SortMenu from "./SortMenu";
+import QuickBuy from "./QuickBuy";
 
 // Use Prisma helper type to match the `include` below
 type ProductWithRelations = Prisma.ProductGetPayload<{
@@ -145,7 +146,7 @@ export default async function HomePage({
               return (
                 <article
                   key={p.id}
-                  className="group rounded-2xl border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:shadow-sm"
+                  className="group rounded-2xl border border-neutral-200 bg-white p-3 transition hover:border-neutral-300 hover:shadow-sm overflow-visible"
                 >
                   <Link href={`/products/${p.slug}`} className="block">
                     <div className="relative overflow-hidden rounded-xl bg-neutral-50">
@@ -170,7 +171,7 @@ export default async function HomePage({
                         <h3 className="text-base font-medium leading-tight">
                           {p.title}
                         </h3>
-                        <span className="shrink-0 text-sm font-semibold">
+                        <span className="shrink-0 text-base font-bold">
                           ${price}
                         </span>
                       </div>
@@ -179,6 +180,7 @@ export default async function HomePage({
                       )}
                     </div>
                   </Link>
+                  <QuickBuy variants={p.variants as any} />
                 </article>
               );
             })}
