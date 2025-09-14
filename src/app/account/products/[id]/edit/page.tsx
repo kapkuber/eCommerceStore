@@ -23,7 +23,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   if (!p) redirect('/account/products');
 
   const v = p.variants[0];
-  const img = p.images[0];
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -37,25 +36,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <label className="block text-sm font-medium">Slug</label>
           <input name="slug" defaultValue={p.slug} required className="mt-1 w-full rounded border px-3 py-2" />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Brand</label>
-            <input name="brand" defaultValue={p.brand ?? ''} className="mt-1 w-full rounded border px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Price (USD)</label>
-            <input name="price" type="number" step="0.01" min="0" defaultValue={(v?.priceCents ?? 0) / 100} required className="mt-1 w-full rounded border px-3 py-2" />
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">SKU</label>
-            <input name="sku" defaultValue={v?.sku ?? ''} required className="mt-1 w-full rounded border px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Image URL</label>
-            <input name="imageUrl" defaultValue={img?.url ?? ''} required className="mt-1 w-full rounded border px-3 py-2" />
-          </div>
+        <div>
+          <label className="block text-sm font-medium">Brand</label>
+          <input name="brand" defaultValue={p.brand ?? ''} className="mt-1 w-full rounded border px-3 py-2" />
         </div>
         <div>
           <label className="block text-sm font-medium">Description</label>

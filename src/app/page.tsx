@@ -68,7 +68,15 @@ export default async function HomePage({
     return products;
   })();
 
-  const heroImage = products[0]?.images?.[0]?.url;
+  // Use first variant's first variant-specific image (attributes.images[0]) for hero
+  const heroImage = (() => {
+    const p = products[0];
+    if (!p) return null as string | null;
+    const v = p.variants?.[0] as any;
+    const imgs = v?.attributes?.images as unknown;
+    if (Array.isArray(imgs) && imgs.length) return String(imgs[0]);
+    return null as string | null;
+  })();
 
   return (
     <main className="mx-auto max-w-7xl px-6">
@@ -76,7 +84,7 @@ export default async function HomePage({
       <section className="mt-10 grid gap-6 rounded-2xl border border-neutral-200 bg-white p-0 sm:gap-8 lg:grid-cols-2">
         <div className="flex items-center p-8 sm:p-12">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            {selectedName ?? 'All products'}
+            {selectedName ?? 'All Products'}
           </h1>
         </div>
 
@@ -139,7 +147,10 @@ export default async function HomePage({
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-3">
             {renderedProducts.map((p: ProductWithRelations) => {
-              const image = p.images?.[0];
+              // Prefer first variant's variant-specific image
+              const firstVariant: any = p.variants?.[0];
+              const varImgs = (firstVariant?.attributes?.images as unknown);
+              const variantImageUrl = Array.isArray(varImgs) && varImgs.length ? String(varImgs[0]) : null;
               const priceCents = p.variants?.[0]?.priceCents ?? 0;
               const price = (priceCents / 100).toFixed(2);
 
@@ -151,11 +162,11 @@ export default async function HomePage({
                   <Link href={`/products/${p.slug}`} className="block">
                     <div className="relative overflow-hidden rounded-xl bg-neutral-50">
                       <div className="aspect-[4/3] w-full">
-                        {image?.url ? (
+                        {variantImageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={image.url}
-                            alt={image.alt || p.title}
+                            src={variantImageUrl}
+                            alt={p.title}
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                           />
                         ) : (

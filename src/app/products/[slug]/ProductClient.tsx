@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // ----- TYPES -----
 type Variant = {
@@ -35,9 +35,19 @@ export default function ProductClient({
   images,
   isAdmin,
 }: ProductClientProps) {
+  // Initialize gallery from the first variant's images only.
+  const [gallery, setGallery] = useState<Image[]>(images);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
+    variants[0]?.id
+  );
   return (
     <main className="mx-auto grid max-w-7xl gap-10 px-6 py-10 lg:grid-cols-2">
-      <ImageGallery images={images} isAdmin={isAdmin} productId={productId} />
+      <ImageGallery
+        images={gallery}
+        isAdmin={isAdmin}
+        productId={productId}
+        variantId={selectedVariantId}
+      />
 
       <div className="space-y-5">
         <header>
@@ -47,7 +57,24 @@ export default function ProductClient({
 
         {description && <p className="text-sm leading-6 text-neutral-800">{description}</p>}
 
-        <BuyBox variants={variants} />
+        <BuyBox
+          variants={variants}
+          onVariantChange={(v) => {
+            try {
+              const imgs = (v as any)?.attributes?.images as string[] | undefined;
+              if (Array.isArray(imgs) && imgs.length) {
+                const mapped: Image[] = imgs.map((u, i) => ({ id: `${v.id}-${i}`, url: u, alt: `${title} ${i+1}`, sort: i }));
+                setGallery(mapped);
+              } else {
+                // No variant images: show placeholder only (no fallback to legacy product images)
+                setGallery([]);
+              }
+              setSelectedVariantId(v.id);
+            } catch {
+              setGallery([]);
+            }
+          }}
+        />
 
         {isAdmin && <InventoryAdmin variants={variants} />}
       </div>
@@ -60,13 +87,21 @@ function ImageGallery({
   images,
   isAdmin,
   productId,
+  variantId,
 }: {
   images: Image[];
   isAdmin: boolean;
   productId: string;
+  variantId?: string;
 }) {
   const [list, setList] = useState<Image[]>(images);
   const [active, setActive] = useState(0);
+
+  // Sync internal list when parent gallery changes (e.g., variant switch)
+  useEffect(() => {
+    setList(images);
+    setActive(0);
+  }, [images]);
 
   async function removeImage(id: string, index: number) {
     if (!confirm('Delete this image?')) return;
@@ -115,39 +150,26 @@ function ImageGallery({
                 className="aspect-square h-auto w-full object-cover"
               />
             </button>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => removeImage(img.id, i)}
-                className="absolute right-2 top-2 rounded-full bg-white/95 p-1 shadow border hover:bg-white"
-                aria-label="Delete image"
-                title="Delete image"
-              >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 6l12 12M6 18L18 6" />
-                </svg>
-              </button>
-            )}
+            {/* Deleting variant images is managed in the admin Variants page */}
           </div>
         ))}
       </div>
 
-      {isAdmin && <AdminAddImage productId={productId} />}
+      {isAdmin && variantId && <AdminAddImage variantId={variantId} />}
     </div>
   );
 }
 
 // ---- ADMIN ADD IMAGE ----
-function AdminAddImage({ productId }: { productId: string }) {
+function AdminAddImage({ variantId }: { variantId: string }) {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const form = new FormData();
-    form.append("file", file);
-    form.append("productId", productId);
+    form.append("image", file);
 
-    await fetch("/api/admin/add-image", {
+    await fetch(`/api/admin/variants/${variantId}/images`, {
       method: "POST",
       body: form,
     });
@@ -157,7 +179,7 @@ function AdminAddImage({ productId }: { productId: string }) {
   return (
     <div className="mt-4 text-sm">
       <label className="cursor-pointer rounded border px-3 py-2 hover:bg-neutral-50">
-        Add image (admin)
+        Add image to variant (admin)
         <input type="file" hidden onChange={handleUpload} />
       </label>
     </div>
@@ -165,13 +187,17 @@ function AdminAddImage({ productId }: { productId: string }) {
 }
 
 // ---- BUY BOX ----
-function BuyBox({ variants }: { variants: Variant[] }) {
+function BuyBox({ variants, onVariantChange }: { variants: Variant[]; onVariantChange?: (v: Variant) => void }) {
   const [selected, setSelected] = useState(variants[0]?.id);
   const [qty, setQty] = useState(1);
   const [plan, setPlan] = useState<"SUBSCRIBE" | "ONETIME">("SUBSCRIBE"); // default subscription
   const [freq, setFreq] = useState("30"); // days
 
   const variant = variants.find((v) => v.id === selected);
+  useEffect(() => {
+    if (variant && onVariantChange) onVariantChange(variant);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
   const price = variant?.priceCents ?? 0;
   const outOfStock = !variant || (variant.inventoryOnHand ?? 0) <= 0;
 

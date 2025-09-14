@@ -19,6 +19,7 @@ export default async function NewProductPage() {
         className="mt-6 grid gap-4"
         action="/api/admin/products"
         method="post"
+        encType="multipart/form-data"
       >
         <div>
           <label className="block text-sm font-medium">Product Name</label>

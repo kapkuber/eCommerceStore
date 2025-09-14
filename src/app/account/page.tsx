@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import SignOutButton from './SignOutButton';
+import BulkDeleteBar from './BulkDeleteBar';
 import { prisma } from '@/lib/db';
 
 // Ensure this page is always rendered fresh to avoid SSR/CSR mismatches
@@ -77,52 +78,70 @@ export default async function AccountPage() {
           )}
 
           <div className="rounded-2xl border overflow-hidden">
+            {/* Bulk actions */}
+            {products.length > 0 && <BulkDeleteBar containerId="product-list" />}
             <div className="grid grid-cols-12 gap-4 bg-neutral-50 p-3 text-xs font-semibold text-neutral-700">
-              <div className="col-span-2">Image</div>
-              <div className="col-span-3">Product</div>
-              <div className="col-span-2">SKU</div>
-              <div className="col-span-1 text-right">Price</div>
-              <div className="col-span-2 text-right">On Hand</div>
-              <div className="col-span-1 text-right">Reserved</div>
-              <div className="col-span-1 text-right">Actions</div>
+              <div className="col-span-1 text-center">
+                <input id="select-all" type="checkbox" className="h-4 w-4" />
+              </div>
+              <div className="col-span-5">Product</div>
+              <div className="col-span-2 text-center">Variants</div>
+              <div className="col-span-2 text-center">On Hand</div>
+              <div className="col-span-1 text-center">Reserved</div>
+              <div className="col-span-1 text-center">Actions</div>
             </div>
-            <ul className="divide-y">
-              {products.map((p) => (
-                p.variants.map((v: any) => (
-                  <li key={v.id} className="grid grid-cols-12 items-center gap-4 p-3">
-                    <div className="col-span-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={p.images[0]?.url || ''}
-                        alt={p.title}
-                        className="h-12 w-12 rounded object-cover bg-neutral-100"
-                      />
+            <ul id="product-list" className="divide-y">
+              {products.map((p) => {
+                const vCount = p.variants.length;
+                const onHandSum = p.variants.reduce((s: number, vv: any) => s + (vv.inventoryOnHand ?? 0), 0);
+                const reservedSum = p.variants.reduce((s: number, vv: any) => s + (vv.inventoryReserved ?? 0), 0);
+                return (
+                  <li key={p.id} className="p-0">
+                    <div className="grid grid-cols-12 items-center gap-4 p-3">
+                      <div className="col-span-1 flex justify-center">
+                        <input type="checkbox" name="ids" value={p.id} className="row-check h-4 w-4" />
+                      </div>
+                      <div className="col-span-5 min-w-0">
+                        <a href={`/products/${p.slug}`} className="truncate font-medium hover:underline">{p.title}</a>
+                        <div className="truncate text-xs text-neutral-500">/{p.slug}</div>
+                      </div>
+                      <div className="col-span-2 text-center text-sm">{vCount}</div>
+                      <div className="col-span-2 text-center text-sm tabular-nums">{onHandSum}</div>
+                      <div className="col-span-1 text-center text-sm tabular-nums">{reservedSum}</div>
+                      <div className="col-span-1 flex flex-col items-center gap-2">
+                      <a href={`/account/products/${p.id}/edit`} className="rounded border px-3 py-1 text-xs">Edit</a>
+                      <a href={`/account/products/${p.id}/variants`} className="rounded border px-3 py-1 text-xs">Variants</a>
                     </div>
-                    <div className="col-span-3 min-w-0">
-                      <div className="truncate font-medium">{p.title}</div>
-                      <div className="truncate text-xs text-neutral-500">/{p.slug}</div>
                     </div>
-                    <div className="col-span-2 text-sm truncate">{v.sku}</div>
-                    <div className="col-span-1 text-sm text-right">${(v.priceCents / 100).toFixed(2)}</div>
-                    <div className="col-span-2 text-sm text-right">
-                      <form action={`/api/admin/variants/${v.id}/inventory`} method="post" className="inline-flex items-center gap-2 justify-end">
-                        <input
-                          type="number"
-                          name="inventoryOnHand"
-                          min={0}
-                          defaultValue={v.inventoryOnHand}
-                          className="w-20 rounded border px-2 py-1 text-right"
-                        />
-                        <button className="rounded border px-2 py-1 text-xs">Save</button>
-                      </form>
-                    </div>
-                    <div className="col-span-1 text-sm text-right">{v.inventoryReserved}</div>
-                    <div className="col-span-1 flex justify-end gap-2">
-                      <a href={`/account/products/${p.id}/edit`} className="rounded border px-2 py-1 text-xs">Edit</a>
-                    </div>
+                    <details className="border-t bg-neutral-50/60">
+                      <summary className="cursor-pointer list-none px-3 py-2 text-xs text-neutral-600">Show variants</summary>
+                      <div className="p-3">
+                        <div className="grid grid-cols-12 gap-3 bg-white p-2 text-xs font-semibold text-neutral-700">
+                          <div className="col-span-4">SKU</div>
+                          <div className="col-span-2 text-right">Price</div>
+                          <div className="col-span-4 text-center">On Hand</div>
+                          <div className="col-span-2 text-center">Reserved</div>
+                        </div>
+                        <ul className="divide-y">
+                          {p.variants.map((v: any) => (
+                            <li key={v.id} className="grid grid-cols-12 items-center gap-3 p-2">
+                              <div className="col-span-4 truncate text-sm">{v.sku}</div>
+                              <div className="col-span-2 text-right text-sm">${(v.priceCents/100).toFixed(2)}</div>
+                              <div className="col-span-4 text-sm">
+                                <form action={`/api/admin/variants/${v.id}/inventory`} method="post" className="mx-auto inline-flex items-center gap-2 justify-center">
+                                  <input type="number" name="inventoryOnHand" min={0} defaultValue={v.inventoryOnHand} className="w-20 rounded border px-2 py-1 text-center" />
+                                  <button className="rounded border px-3 py-1 text-xs">Save</button>
+                                </form>
+                              </div>
+                              <div className="col-span-2 text-center text-sm tabular-nums">{v.inventoryReserved}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </details>
                   </li>
-                ))
-              ))}
+                );
+              })}
               {products.length === 0 && (
                 <li className="p-6 text-sm text-neutral-600">No products yet.</li>
               )}

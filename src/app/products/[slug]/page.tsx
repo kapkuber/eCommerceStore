@@ -27,6 +27,12 @@ export default async function ProductPage({
 
   const isAdmin = !!session && (session.user as any)?.role === "ADMIN";
 
+  // Compute initial images from first variant's attributes.images only
+  const firstVariant = product.variants[0];
+  const initialImages = Array.isArray((firstVariant as any)?.attributes?.images)
+    ? ((firstVariant as any).attributes.images as string[]).map((u: string, i: number) => ({ id: `${firstVariant.id}-${i}`, url: u, alt: `${product.title} ${i+1}`, sort: i }))
+    : [];
+
   return (
     <ProductClient
       productId={product.id}
@@ -34,7 +40,7 @@ export default async function ProductPage({
       brand={product.brand}
       description={product.description}
       variants={product.variants}
-      images={product.images}
+      images={initialImages}
       isAdmin={isAdmin}
     />
   );
