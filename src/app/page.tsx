@@ -18,6 +18,9 @@ export default async function HomePage({
   const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
 
   const selectedSlug = Array.isArray(sp?.category) ? sp?.category[0] : sp?.category;
+  const selectedName = selectedSlug
+    ? categories.find((c) => c.slug === selectedSlug)?.name || selectedSlug
+    : null;
 
   const sortParam = (Array.isArray(sp?.sort) ? sp?.sort[0] : sp?.sort || "newest") as
     | "newest"
@@ -72,7 +75,7 @@ export default async function HomePage({
       <section className="mt-10 grid gap-6 rounded-2xl border border-neutral-200 bg-white p-0 sm:gap-8 lg:grid-cols-2">
         <div className="flex items-center p-8 sm:p-12">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            All products
+            {selectedName ?? 'All products'}
           </h1>
         </div>
 
