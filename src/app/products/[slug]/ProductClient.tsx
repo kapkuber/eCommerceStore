@@ -65,35 +65,70 @@ function ImageGallery({
   isAdmin: boolean;
   productId: string;
 }) {
+  const [list, setList] = useState<Image[]>(images);
   const [active, setActive] = useState(0);
+
+  async function removeImage(id: string, index: number) {
+    if (!confirm('Delete this image?')) return;
+    const res = await fetch(`/api/admin/images/${id}`, { method: 'DELETE' });
+    if (!res.ok) return; // optionally show toast
+    setList((prev) => {
+      const next = prev.filter((im) => im.id !== id);
+      // adjust active index if needed
+      if (next.length === 0) {
+        setActive(0);
+      } else if (index === active || index < active) {
+        setActive((a) => Math.max(0, Math.min(a - 1, next.length - 1)));
+      }
+      return next;
+    });
+  }
+
+  const main = list[active];
 
   return (
     <div>
       <div className="aspect-square w-full overflow-hidden rounded-2xl border">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={images[active]?.url || "/placeholder.png"}
-          alt={images[active]?.alt || "Product image"}
+          src={main?.url || "/placeholder.png"}
+          alt={main?.alt || "Product image"}
           className="h-full w-full object-cover"
         />
       </div>
 
-      <div className="mt-3 flex gap-2 overflow-x-auto">
-        {images.map((img, i) => (
-          <button
-            key={img.id}
-            onClick={() => setActive(i)}
-            className={`h-20 w-20 shrink-0 rounded border ${
-              i === active ? "border-black" : "border-neutral-300"
-            }`}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={img.url}
-              alt={img.alt || "Product thumb"}
-              className="h-full w-full object-cover"
-            />
-          </button>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        {list.map((img, i) => (
+          <div key={img.id} className="relative w-full">
+            <button
+              type="button"
+              onClick={() => setActive(i)}
+              className={`block w-full overflow-hidden rounded-xl border ${
+                i === active ? "border-black" : "border-neutral-300 hover:border-neutral-400"
+              }`}
+              title={img.alt || undefined}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.url}
+                alt={img.alt || "Product thumb"}
+                className="aspect-square h-auto w-full object-cover"
+              />
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => removeImage(img.id, i)}
+                className="absolute right-2 top-2 rounded-full bg-white/95 p-1 shadow border hover:bg-white"
+                aria-label="Delete image"
+                title="Delete image"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 6l12 12M6 18L18 6" />
+                </svg>
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
@@ -312,7 +347,16 @@ function Benefit({ children }: { children: React.ReactNode }) {
 function variantDisplay(v: Variant) {
   // try label, then common attributes, then sku
   // @ts-ignore optional attributes
-  return v.label ?? v?.attributes?.name ?? v?.attributes?.flavor ?? v.sku ?? "Variant";
+  return (
+    v.label ??
+    // common attribute keys
+    v?.attributes?.option ??
+    v?.attributes?.color ??
+    v?.attributes?.name ??
+    v?.attributes?.flavor ??
+    v.sku ??
+    "Variant"
+  );
 }
 
 // ---- INVENTORY ADMIN ----
