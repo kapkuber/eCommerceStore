@@ -147,10 +147,24 @@ export default async function HomePage({
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-3">
             {renderedProducts.map((p: ProductWithRelations) => {
-              // Prefer first variant's variant-specific image
+              // Primary image = first image of first variant
               const firstVariant: any = p.variants?.[0];
-              const varImgs = (firstVariant?.attributes?.images as unknown);
-              const variantImageUrl = Array.isArray(varImgs) && varImgs.length ? String(varImgs[0]) : null;
+              const firstImgs = (firstVariant?.attributes?.images as unknown);
+              const primaryImg = Array.isArray(firstImgs) && firstImgs.length ? String(firstImgs[0]) : null;
+
+              // Hover image: try first image of the next variant that has images
+              let hoverImg: string | null = null;
+              if (Array.isArray(p.variants) && p.variants.length > 1) {
+                for (let i = 1; i < p.variants.length; i++) {
+                  const imgs = (p.variants[i] as any)?.attributes?.images as unknown;
+                  if (Array.isArray(imgs) && imgs.length) { hoverImg = String(imgs[0]); break; }
+                }
+              }
+              // Fallback: use second image of first variant if available
+              if (!hoverImg && Array.isArray(firstImgs) && firstImgs.length > 1) {
+                hoverImg = String(firstImgs[1]);
+              }
+
               const priceCents = p.variants?.[0]?.priceCents ?? 0;
               const price = (priceCents / 100).toFixed(2);
 
@@ -161,14 +175,24 @@ export default async function HomePage({
                 >
                   <Link href={`/products/${p.slug}`} className="block">
                     <div className="relative overflow-hidden rounded-xl bg-neutral-50">
-                      <div className="aspect-[4/3] w-full">
-                        {variantImageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={variantImageUrl}
-                            alt={p.title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                          />
+                      <div className="aspect-[4/3] w-full relative">
+                        {primaryImg ? (
+                          <>
+                            {/* Base image */}
+                            <img
+                              src={primaryImg}
+                              alt={p.title}
+                              className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0"
+                            />
+                            {/* Hover image (only if available) */}
+                            {hoverImg && (
+                              <img
+                                src={hoverImg}
+                                alt={p.title}
+                                className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                              />
+                            )}
+                          </>
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-neutral-400">
                             No image
