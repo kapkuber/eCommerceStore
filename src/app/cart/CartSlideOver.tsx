@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 
 type CartItem = {
   id: string;
@@ -19,6 +20,9 @@ type CartData = { items: CartItem[]; total: number };
 const FREE_SHIPPING_THRESHOLD = 8000; // $80
 
 export default function CartSlideOver({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CartData>({ items: [], total: 0 });
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -53,7 +57,13 @@ export default function CartSlideOver({ open, onClose }: { open: boolean; onClos
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const inFlightRef = useRef<Record<string, number>>({}); // accumulate fast clicks per variant
+  // 👇 Belt & suspenders: if the route changes while the drawer is open, close it.
+  useEffect(() => {
+    if (open) onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]); // intentionally not depending on onClose to avoid re-run noise
+
+  const inFlightRef = useRef<Record<string, number>>({});
   const debounceRef = useRef<Record<string, any>>({});
 
   function applyLocalDelta(variantId: string, delta: number) {
@@ -118,13 +128,23 @@ export default function CartSlideOver({ open, onClose }: { open: boolean; onClos
     }
     debounceRef.current[variantId] = setTimeout(() => {
       sendAccumulatedDelta(variantId);
-    }, 150); // 150–250ms feels instant but batches bursts
+    }, 150);
   }
 
   const subtotal = data.total;
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
   const progress = Math.min(1, subtotal / FREE_SHIPPING_THRESHOLD);
   const earnedFreeShip = subtotal >= FREE_SHIPPING_THRESHOLD;
+
+  // 👇 Click handler that closes first, then navigates (prevents Link's default nav)
+  function handleCheckoutClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (data.items.length === 0) return; // still respects disabled state
+    e.preventDefault();
+    onClose();
+    // If you want to let the close animation run for ~150–200ms, you can delay push:
+    // setTimeout(() => router.push("/checkout"), 150);
+    router.push("/checkout");
+  }
 
   return (
     <>
@@ -241,6 +261,7 @@ export default function CartSlideOver({ open, onClose }: { open: boolean; onClos
         <div className="border-t px-6 pb-6 pt-4">
           <Link
             href="/checkout"
+            onClick={handleCheckoutClick}
             className={`flex w-full items-center justify-center rounded-full bg-black px-4 py-4 text-base font-bold text-white transition hover:opacity-90 ${
               data.items.length === 0 ? "pointer-events-none opacity-50" : ""
             }`}
