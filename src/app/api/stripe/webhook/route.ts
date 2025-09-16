@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { headers } from 'next/headers';
+import { prisma } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +18,15 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  // handle events...
+  // Handle payment success by marking the related order as PAID
+  if (event.type === 'payment_intent.succeeded') {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    const id = typeof pi.id === 'string' ? pi.id : undefined;
+    if (id) {
+      try {
+        await prisma.order.update({ where: { stripePaymentIntent: id }, data: { status: 'PAID' } });
+      } catch {}
+    }
+  }
   return Response.json({ received: true });
 }

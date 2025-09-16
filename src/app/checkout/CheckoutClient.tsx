@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 
 type CartItem = {
   id: string;
@@ -17,10 +20,11 @@ type CartData = { items: CartItem[]; total: number };
 export default function CheckoutClient() {
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartData>({ items: [], total: 0 });
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // simple form state (you can swap to react-hook-form later)
   const [email, setEmail] = useState("");
-  const [country, setCountry] = useState("United States");
+  const [country, setCountry] = useState("US");
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [address, setAddress] = useState("");
@@ -47,33 +51,23 @@ export default function CheckoutClient() {
   const discount = 0; // hook up a code later
   const total = Math.max(0, subtotal + shipping - discount);
 
-  async function onPayNow(e: React.FormEvent) {
-    e.preventDefault();
-    // Send to your existing Stripe checkout route
-    const form = new FormData();
-    form.append("amount", String(total));
-
-    // Optional: include snapshot of address/contact
-    form.append("customer_email", email);
-    form.append("shipping_name", `${first} ${last}`);
-    form.append("shipping_address1", address);
-    form.append("shipping_address2", address2);
-    form.append("shipping_city", city);
-    form.append("shipping_state", state);
-    form.append("shipping_zip", zip);
-    form.append("shipping_country", country);
-    form.append("phone", phone);
-
-    const resp = await fetch("/api/stripe/checkout", { method: "POST", body: form });
-    // Your /api/stripe/checkout should either redirect or respond with a URL
-    // If it returns a URL:
-    try {
+  // Create/recreate PaymentIntent when total changes
+  useEffect(() => {
+    if (total <= 0) { setClientSecret(null); return; }
+    (async () => {
+      const resp = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ amount: total, currency: "usd" }),
+      });
       const json = await resp.json();
-      if (json?.url) window.location.href = json.url;
-    } catch {
-      // if the route already handled a redirect, do nothing
-    }
-  }
+      setClientSecret(json?.clientSecret || null);
+    })();
+  }, [total]);
+
+  const stripePromise = useMemo(() => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""), []);
+
+  const appearance = { theme: "stripe" as const };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 lg:grid lg:grid-cols-12 lg:gap-8">
@@ -85,7 +79,7 @@ export default function CheckoutClient() {
         <div className="rounded-2xl border p-4">
           <div className="text-sm font-medium">Express checkout</div>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {["Shop Pay", "PayPal", "Amazon Pay", "G Pay"].map((t) => (
+            {["PayPal", "Amazon Pay", "Google Pay"].map((t) => (
               <button
                 key={t}
                 className="h-10 rounded-lg border bg-white text-sm font-semibold hover:bg-neutral-50"
@@ -103,7 +97,7 @@ export default function CheckoutClient() {
           <div className="h-px flex-1 bg-neutral-200" />
         </div>
 
-        <form onSubmit={onPayNow} className="space-y-6">
+        <form onSubmit={(e)=>e.preventDefault()} className="space-y-6">
           {/* Contact */}
           <div className="rounded-2xl border p-4">
             <div className="mb-3 flex items-center justify-between">
@@ -130,14 +124,10 @@ export default function CheckoutClient() {
             <h2 className="mb-3 text-base font-semibold">Delivery</h2>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <select
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                className="rounded-lg border px-3 py-2"
-              >
-                <option>United States</option>
-                <option>Canada</option>
-                <option>United Kingdom</option>
+              <select value={country} onChange={(e)=>setCountry(e.target.value)} className="rounded-lg border px-3 py-2">
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
               </select>
 
               <div className="sm:col-span-1" />
@@ -208,52 +198,27 @@ export default function CheckoutClient() {
             </p>
           </div>
 
-          {/* Payment (visual only; your Stripe route handles the actual payment) */}
+          {/* Payment */}
           <div className="rounded-2xl border p-4">
             <h2 className="mb-3 text-base font-semibold">Payment</h2>
             <p className="text-xs text-neutral-600">All transactions are secure and encrypted.</p>
-
-            <div className="mt-3 rounded-lg border p-3">
-              <div className="text-sm font-medium">Credit card</div>
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <input className="rounded-lg border px-3 py-2" placeholder="Card number" />
-                <input className="rounded-lg border px-3 py-2" placeholder="Security code" />
-                <input className="rounded-lg border px-3 py-2" placeholder="Expiration date (MM / YY)" />
-                <input className="rounded-lg border px-3 py-2" placeholder="Name on card" />
-              </div>
-              <label className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
-                <input type="checkbox" className="h-4 w-4" /> Use shipping address as billing address
-              </label>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              {["PayPal", "Shop Pay", "Afterpay", "HSA/FSA"].map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className="w-full rounded-lg border bg-white px-3 py-2 text-left text-sm hover:bg-neutral-50"
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
+                <PaymentElement className="mt-3" />
+                <StripePayNow
+                  amount={total}
+                  email={email}
+                  name={`${first} ${last}`.trim()}
+                  address={{ line1: address, line2: address2, city, state, postal_code: zip, country }}
+                />
+              </Elements>
+            )}
 
             <label className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" className="h-4 w-4" /> Save my information for a faster checkout
             </label>
 
-            <button
-              type="submit"
-              className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-              disabled={loading || cart.items.length === 0}
-            >
-              Pay now
-            </button>
-
-            <p className="mt-3 text-[11px] text-neutral-500">
-              Your info will be saved to a Shop account. By continuing, you agree to Shop’s Terms of Service and
-              acknowledge the Privacy Policy.
-            </p>
+            {/* Pay button rendered by StripePayNow */}
           </div>
         </form>
       </section>
@@ -334,6 +299,74 @@ export default function CheckoutClient() {
         </div>
       </aside>
     </main>
+  );
+}
+
+function StripePayNow({ amount, email, name, address }: { amount: number; email: string; name: string; address: { line1: string; line2: string; city: string; state: string; postal_code: string; country: string; } }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit() {
+    if (!stripe || !elements) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+        confirmParams: {
+          receipt_email: email || undefined,
+          payment_method_data: {
+            billing_details: {
+              name: name || undefined,
+              email: email || undefined,
+              address,
+            },
+          },
+        },
+      });
+      if (error) {
+        setError(error.message || 'Payment failed');
+        setSubmitting(false);
+        return;
+      }
+      if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'requires_capture' || paymentIntent.status === 'processing')) {
+        // Create order and clear cart
+        const form = new FormData();
+        form.append('email', email);
+        form.append('name', name);
+        form.append('line1', address.line1);
+        form.append('line2', address.line2);
+        form.append('city', address.city);
+        form.append('state', address.state);
+        form.append('postal', address.postal_code);
+        form.append('country', address.country);
+        const res = await fetch('/api/checkout', { method: 'POST', body: form });
+        try { const j = await res.json(); if (j?.url) window.location.href = j.url; else window.location.href = '/account'; } catch { window.location.href = '/account'; }
+        return;
+      }
+      setError('Payment could not be completed.');
+    } catch (e: any) {
+      setError(e?.message || 'Unexpected error');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      {error && <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      <button
+        type="button"
+        onClick={onSubmit}
+        className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        disabled={submitting || !stripe || !elements || amount <= 0}
+      >
+        {submitting ? 'Processing…' : `Pay now`}
+      </button>
+    </div>
   );
 }
 

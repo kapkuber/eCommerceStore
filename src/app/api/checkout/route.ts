@@ -50,6 +50,8 @@ export async function POST(req: Request) {
     (fd.get("shipping_country") as string) ||
     "";
 
+  const paymentIntentId = (fd.get('paymentIntentId') as string) || '';
+
   // Pull cart
   const c = await cookies();
   const cartId = c.get("cart_id")?.value || null;
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
       status: "PENDING",
       totalCents: total,
       currency: "usd",
+      stripePaymentIntent: paymentIntentId || null,
       items: {
         create: items.map((it) => ({
           variantId: it.variantId,
@@ -106,6 +109,38 @@ export async function POST(req: Request) {
       },
     },
   });
+
+  // Save shipping + billing addresses (billing mirrors shipping for now)
+  if (line1 || city || state || postal || country) {
+    const shipping = await prisma.address.create({
+      data: {
+        userId,
+        type: 'SHIPPING',
+        line1: line1 || '',
+        line2: line2 || null,
+        city: city || '',
+        region: state || null,
+        postal: postal || '',
+        country: country || 'US',
+      },
+    });
+    const billing = await prisma.address.create({
+      data: {
+        userId,
+        type: 'BILLING',
+        line1: line1 || '',
+        line2: line2 || null,
+        city: city || '',
+        region: state || null,
+        postal: postal || '',
+        country: country || 'US',
+      },
+    });
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { shippingAddressId: shipping.id, billingAddressId: billing.id },
+    });
+  }
 
   // Reserve inventory (best effort)
   await Promise.all(
@@ -131,5 +166,5 @@ export async function POST(req: Request) {
   } catch {}
 
   // Return JSON so the CheckoutClient can navigate
-  return NextResponse.json({ url: "/account", orderId: order.id });
+  return NextResponse.json({ url: `/orders/${order.id}`, orderId: order.id });
 }

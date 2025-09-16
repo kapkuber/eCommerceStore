@@ -37,5 +37,5 @@ export async function POST(req: Request) {
     currency,
     automatic_payment_methods: { enabled: true },
   });
-  return Response.json({ clientSecret: pi.client_secret });
+  return Response.json({ clientSecret: pi.client_secret, id: pi.id });
 }
