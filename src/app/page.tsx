@@ -145,7 +145,7 @@ export default async function HomePage({
             <SortMenu current={sortParam} category={selectedSlug || null} />
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {renderedProducts.map((p: ProductWithRelations) => {
               // Primary image = first image of first variant
               const firstVariant: any = p.variants?.[0];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 type CartItem = {
   id: string;
@@ -238,15 +239,15 @@ export default function CartSlideOver({ open, onClose }: { open: boolean; onClos
 
         {/* Footer */}
         <div className="border-t px-6 pb-6 pt-4">
-          <form method="post" action="/api/stripe/checkout">
-            <input type="hidden" name="amount" value={subtotal} />
-            <button
-              className="flex w-full items-center justify-center rounded-full bg-black px-4 py-4 text-base font-bold text-white transition hover:opacity-90 disabled:opacity-50"
-              disabled={data.items.length === 0}
-            >
-              Checkout • ${(subtotal / 100).toFixed(2)}
-            </button>
-          </form>
+          <Link
+            href="/checkout"
+            className={`flex w-full items-center justify-center rounded-full bg-black px-4 py-4 text-base font-bold text-white transition hover:opacity-90 ${
+              data.items.length === 0 ? "pointer-events-none opacity-50" : ""
+            }`}
+            aria-disabled={data.items.length === 0}
+          >
+            Checkout • ${(subtotal / 100).toFixed(2)}
+          </Link>
 
           <p className="mt-2 text-[11px] leading-4 text-neutral-500 text-center">
             By clicking the Checkout button, I represent I agree to the Terms.
