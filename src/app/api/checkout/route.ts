@@ -11,20 +11,23 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const session = (await getServerSession(authOptions as any)) as
-    | { user?: { id?: string } }
+    | { user?: { id?: string; email?: string; name?: string } }
     | null;
 
   const fd = await req.formData();
 
-  // Accept both your names and the ones the CheckoutClient sends
+  // 👇 Prefer explicit form values, but fall back to the session if present.
   const name =
     (fd.get("name") as string) ||
     (fd.get("shipping_name") as string) ||
+    session?.user?.name ||
     "";
   const email =
     (fd.get("email") as string) ||
     (fd.get("customer_email") as string) ||
+    session?.user?.email ||
     "";
+
   const line1 =
     (fd.get("line1") as string) ||
     (fd.get("shipping_address1") as string) ||
@@ -50,7 +53,7 @@ export async function POST(req: Request) {
     (fd.get("shipping_country") as string) ||
     "";
 
-  const paymentIntentId = (fd.get('paymentIntentId') as string) || '';
+  const paymentIntentId = (fd.get("paymentIntentId") as string) || "";
 
   // Pull cart
   const c = await cookies();
@@ -92,7 +95,6 @@ export async function POST(req: Request) {
     userId = u.id;
   }
 
-  // Minimal order creation
   const order = await prisma.order.create({
     data: {
       userId,
@@ -115,25 +117,25 @@ export async function POST(req: Request) {
     const shipping = await prisma.address.create({
       data: {
         userId,
-        type: 'SHIPPING',
-        line1: line1 || '',
+        type: "SHIPPING",
+        line1: line1 || "",
         line2: line2 || null,
-        city: city || '',
+        city: city || "",
         region: state || null,
-        postal: postal || '',
-        country: country || 'US',
+        postal: postal || "",
+        country: country || "US",
       },
     });
     const billing = await prisma.address.create({
       data: {
         userId,
-        type: 'BILLING',
-        line1: line1 || '',
+        type: "BILLING",
+        line1: line1 || "",
         line2: line2 || null,
-        city: city || '',
+        city: city || "",
         region: state || null,
-        postal: postal || '',
-        country: country || 'US',
+        postal: postal || "",
+        country: country || "US",
       },
     });
     await prisma.order.update({
@@ -165,6 +167,5 @@ export async function POST(req: Request) {
     revalidatePath("/account");
   } catch {}
 
-  // Return JSON so the CheckoutClient can navigate
   return NextResponse.json({ url: `/orders/${order.id}`, orderId: order.id });
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { useSession } from "next-auth/react";
 
 type CartItem = {
   id: string;
@@ -18,11 +18,13 @@ type CartItem = {
 type CartData = { items: CartItem[]; total: number };
 
 export default function CheckoutClient() {
+  const { data: session, status } = useSession(); // 👈 session on the client
+
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartData>({ items: [], total: 0 });
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-  // simple form state (you can swap to react-hook-form later)
+  // form state
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("US");
   const [first, setFirst] = useState("");
@@ -33,6 +35,18 @@ export default function CheckoutClient() {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [phone, setPhone] = useState("");
+
+  // 👇 Pre-fill from session (without clobbering user edits)
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user) return;
+    if (!email && session.user.email) setEmail(session.user.email);
+    const fullName = session.user.name?.trim() || "";
+    if ((first === "" && last === "") && fullName) {
+      const parts = fullName.split(" ");
+      setFirst(parts[0] || "");
+      setLast(parts.slice(1).join(" ") || "");
+    }
+  }, [status, session, email, first, last]);
 
   useEffect(() => {
     (async () => {
@@ -47,8 +61,8 @@ export default function CheckoutClient() {
   }, []);
 
   const subtotal = cart.total;
-  const shipping = 0; // compute after address if you like
-  const discount = 0; // hook up a code later
+  const shipping = 0;
+  const discount = 0;
   const total = Math.max(0, subtotal + shipping - discount);
 
   // Create/recreate PaymentIntent when total changes
@@ -65,9 +79,14 @@ export default function CheckoutClient() {
     })();
   }, [total]);
 
-  const stripePromise = useMemo(() => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""), []);
+  const stripePromise = useMemo(
+    () => loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""),
+    []
+  );
 
   const appearance = { theme: "stripe" as const };
+
+  const isSignedIn = status === "authenticated";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 lg:grid lg:grid-cols-12 lg:gap-8">
@@ -97,14 +116,17 @@ export default function CheckoutClient() {
           <div className="h-px flex-1 bg-neutral-200" />
         </div>
 
-        <form onSubmit={(e)=>e.preventDefault()} className="space-y-6">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           {/* Contact */}
           <div className="rounded-2xl border p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold">Contact</h2>
-              <a href="/api/auth/signin" className="text-sm text-green-700 hover:underline">
-                Sign in
-              </a>
+              {/* 👇 Hide if signed in */}
+              {!isSignedIn && (
+                <a href="/api/auth/signin" className="text-sm text-green-700 hover:underline">
+                  Sign in
+                </a>
+              )}
             </div>
             <input
               type="email"
@@ -113,6 +135,7 @@ export default function CheckoutClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border px-3 py-2"
+              autoComplete="email"
             />
             <label className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" className="h-4 w-4" /> Email me with news and offers
@@ -124,7 +147,12 @@ export default function CheckoutClient() {
             <h2 className="mb-3 text-base font-semibold">Delivery</h2>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <select value={country} onChange={(e)=>setCountry(e.target.value)} className="rounded-lg border px-3 py-2">
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="rounded-lg border px-3 py-2"
+                autoComplete="country"
+              >
                 <option value="US">United States</option>
                 <option value="CA">Canada</option>
                 <option value="GB">United Kingdom</option>
@@ -137,17 +165,20 @@ export default function CheckoutClient() {
                 value={first}
                 onChange={(e) => setFirst(e.target.value)}
                 className="rounded-lg border px-3 py-2"
+                autoComplete="given-name"
               />
               <input
                 placeholder="Last name"
                 value={last}
                 onChange={(e) => setLast(e.target.value)}
                 className="rounded-lg border px-3 py-2"
+                autoComplete="family-name"
               />
 
               <input
                 placeholder="Company (optional)"
                 className="sm:col-span-2 rounded-lg border px-3 py-2"
+                autoComplete="organization"
               />
 
               <input
@@ -155,12 +186,14 @@ export default function CheckoutClient() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="sm:col-span-2 rounded-lg border px-3 py-2"
+                autoComplete="address-line1"
               />
               <input
                 placeholder="Apartment, suite, etc. (optional)"
                 value={address2}
                 onChange={(e) => setAddress2(e.target.value)}
                 className="sm:col-span-2 rounded-lg border px-3 py-2"
+                autoComplete="address-line2"
               />
 
               <input
@@ -168,29 +201,33 @@ export default function CheckoutClient() {
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="rounded-lg border px-3 py-2"
+                autoComplete="address-level2"
               />
               <input
                 placeholder="State"
                 value={state}
                 onChange={(e) => setState(e.target.value)}
                 className="rounded-lg border px-3 py-2"
+                autoComplete="address-level1"
               />
               <input
                 placeholder="ZIP code"
                 value={zip}
                 onChange={(e) => setZip(e.target.value)}
                 className="rounded-lg border px-3 py-2"
+                autoComplete="postal-code"
               />
               <input
                 placeholder="Phone (optional)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="rounded-lg border px-3 py-2"
+                autoComplete="tel"
               />
             </div>
           </div>
 
-          {/* Shipping method (placeholder until address entered) */}
+          {/* Shipping method (placeholder) */}
           <div className="rounded-2xl border p-4">
             <h2 className="mb-3 text-base font-semibold">Shipping method</h2>
             <p className="text-sm text-neutral-600">
@@ -217,8 +254,6 @@ export default function CheckoutClient() {
             <label className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" className="h-4 w-4" /> Save my information for a faster checkout
             </label>
-
-            {/* Pay button rendered by StripePayNow */}
           </div>
         </form>
       </section>
@@ -302,7 +337,17 @@ export default function CheckoutClient() {
   );
 }
 
-function StripePayNow({ amount, email, name, address }: { amount: number; email: string; name: string; address: { line1: string; line2: string; city: string; state: string; postal_code: string; country: string; } }) {
+function StripePayNow({
+  amount,
+  email,
+  name,
+  address,
+}: {
+  amount: number;
+  email: string;
+  name: string;
+  address: { line1: string; line2: string; city: string; state: string; postal_code: string; country: string };
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -315,41 +360,49 @@ function StripePayNow({ amount, email, name, address }: { amount: number; email:
     try {
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
-        redirect: 'if_required',
+        redirect: "if_required",
         confirmParams: {
           receipt_email: email || undefined,
           payment_method_data: {
-            billing_details: {
-              name: name || undefined,
-              email: email || undefined,
-              address,
-            },
+            billing_details: { name: name || undefined, email: email || undefined, address },
           },
         },
       });
+
       if (error) {
-        setError(error.message || 'Payment failed');
+        setError(error.message || "Payment failed");
         setSubmitting(false);
         return;
       }
-      if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'requires_capture' || paymentIntent.status === 'processing')) {
-        // Create order and clear cart
+
+      if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture" || paymentIntent.status === "processing")) {
         const form = new FormData();
-        form.append('email', email);
-        form.append('name', name);
-        form.append('line1', address.line1);
-        form.append('line2', address.line2);
-        form.append('city', address.city);
-        form.append('state', address.state);
-        form.append('postal', address.postal_code);
-        form.append('country', address.country);
-        const res = await fetch('/api/checkout', { method: 'POST', body: form });
-        try { const j = await res.json(); if (j?.url) window.location.href = j.url; else window.location.href = '/account'; } catch { window.location.href = '/account'; }
+        form.append("email", email);
+        form.append("name", name);
+        form.append("line1", address.line1);
+        form.append("line2", address.line2);
+        form.append("city", address.city);
+        form.append("state", address.state);
+        form.append("postal", address.postal_code);
+        form.append("country", address.country);
+        form.append("paymentIntentId", paymentIntent.id);
+
+        // ⚠️ Make sure this path matches your route file:
+        // If your file is app/api/stripe/checkout/route.ts then POST to /api/stripe/checkout
+        const res = await fetch("/api/stripe/checkout", { method: "POST", body: form });
+
+        try {
+          const j = await res.json();
+          if (j?.url) window.location.href = j.url;
+          else window.location.href = "/account";
+        } catch {
+          window.location.href = "/account";
+        }
         return;
       }
-      setError('Payment could not be completed.');
+      setError("Payment could not be completed.");
     } catch (e: any) {
-      setError(e?.message || 'Unexpected error');
+      setError(e?.message || "Unexpected error");
     } finally {
       setSubmitting(false);
     }
@@ -357,14 +410,18 @@ function StripePayNow({ amount, email, name, address }: { amount: number; email:
 
   return (
     <div className="mt-4">
-      {error && <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="mb-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       <button
         type="button"
         onClick={onSubmit}
         className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         disabled={submitting || !stripe || !elements || amount <= 0}
       >
-        {submitting ? 'Processing…' : `Pay now`}
+        {submitting ? "Processing…" : `Pay now`}
       </button>
     </div>
   );
