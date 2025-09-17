@@ -19,9 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full bg-white">
       <body className="min-h-full text-neutral-900 antialiased">
         <Providers>
-          <header className="sticky top-0 z-40 border-b bg-black text-white">
+          <header className="sticky top-0 z-40 bg-black text-white">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-              <Link href="/" className="text-2xl font-semibold tracking-tight">
+              <Link href="/" className="text-2xl font-extrabold tracking-tight">
                 eCommerce
               </Link>
 

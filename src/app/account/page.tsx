@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import SignOutButton from './SignOutButton';
+import AccountTopNav from './AccountTopNav';
 import BulkDeleteBar from './BulkDeleteBar';
 import { prisma } from '@/lib/db';
 
@@ -15,6 +16,7 @@ export default async function AccountPage() {
   if (!session) redirect('/login');
 
   const isAdmin = (session.user as any)?.role === 'ADMIN';
+  const userId = (session.user as any)?.id as string | undefined;
 
   // If admin, load inventory stats and product/variant details for dashboard
   let products: Array<any> = [];
@@ -54,15 +56,33 @@ export default async function AccountPage() {
     };
   }
 
+  // Load user addresses and orders
+  const [addresses, orders] = await Promise.all([
+    prisma.address.findMany({ where: { userId: userId || undefined, type: 'SHIPPING' }, orderBy: { updatedAt: 'desc' } }),
+    prisma.order.findMany({
+      where: { userId: userId || undefined },
+      orderBy: { createdAt: 'desc' },
+      include: { items: { include: { variant: { include: { product: true } } } } },
+    }),
+  ]);
+
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <h1 className="text-2xl font-semibold">Account</h1>
-      <p className="mt-2 text-sm text-neutral-600">Signed in as {session.user?.email}</p>
+    <main className="mx-auto max-w-5xl px-0 pb-16">
+      {/* Full-bleed top nav spanning the entire viewport width */}
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+        <AccountTopNav isAdmin={isAdmin} />
+      </div>
+
+      {/* My Account */}
+      <section id="my-account" className="px-6 pt-10">
+        <h1 className="text-3xl font-extrabold tracking-tight">My Account</h1>
+        <p className="mt-2 text-sm text-neutral-600">Signed in as {session.user?.email}</p>
+      </section>
 
       {isAdmin && (
-        <section className="mt-8 space-y-6">
+        <section id="product-dashboard" className="mt-12 space-y-6 px-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Inventory Dashboard</h2>
+            <h2 className="text-3xl font-extrabold tracking-tight">Inventory Dashboard</h2>
             <a href="/account/products/new" className="rounded bg-black px-4 py-2 text-white">Add Product</a>
           </div>
 
@@ -150,9 +170,54 @@ export default async function AccountPage() {
         </section>
       )}
 
-      <div className="mt-8">
-        <SignOutButton />
-      </div>
+      {/* Shipping Addresses */}
+      <section id="shipping-addresses" className="mt-12 px-6">
+        <h2 className="text-3xl font-extrabold tracking-tight">Shipping Addresses</h2>
+        {addresses.length === 0 ? (
+          <p className="mt-4 text-sm text-neutral-600">No saved addresses.</p>
+        ) : (
+          <div className="mt-4 grid gap-4 sm:max-w-lg">
+            {addresses.map((a) => (
+              <div key={a.id} className="rounded-xl border bg-neutral-50 p-4">
+                <div className="text-xs font-semibold tracking-wide text-neutral-500">CURRENT ADDRESS</div>
+                <div className="mt-3 text-sm">
+                  <div>{a.line1}{a.line2 ? `, ${a.line2}` : ''}</div>
+                  <div>{[a.city, a.region, a.postal].filter(Boolean).join(', ')}</div>
+                  <div>{a.country}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Order History */}
+      <section id="order-history" className="mt-12 px-6">
+        <h2 className="text-3xl font-extrabold tracking-tight">Order History</h2>
+        {orders.length === 0 ? (
+          <p className="mt-4 text-sm text-neutral-600">You haven't placed any orders yet.</p>
+        ) : (
+          <ul className="mt-4 divide-y rounded-xl border">
+            {orders.map((o) => (
+              <li key={o.id} className="p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="font-semibold">Order #{o.id.slice(0,8)}</div>
+                  <div className="text-neutral-600">${(o.totalCents/100).toFixed(2)}</div>
+                </div>
+                <div className="mt-1 text-xs text-neutral-600">{new Date(o.createdAt).toLocaleString()} — {o.status}</div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-700">
+                  {o.items.map((it) => (
+                    <span key={it.id} className="rounded border px-2 py-1">
+                      {it.variant.product.title} × {it.qty}
+                    </span>
+                  ))}
+                </div>
+                <a href={`/orders/${o.id}`} className="mt-3 inline-block text-xs font-semibold underline">View details</a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
