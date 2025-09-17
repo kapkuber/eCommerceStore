@@ -89,10 +89,17 @@ export async function POST(req: Request) {
   // Resolve a userId: prefer session; otherwise create/find by email
   let userId: string | null = session?.user?.id ?? null;
   if (!userId && email && /.+@.+\..+/.test(email)) {
+    // Cast data to any to accommodate environments where Prisma Client
+    // types have not been regenerated yet (e.g., Windows/OneDrive lock).
+    // At runtime the columns exist after migration: firstName, lastName.
+    const updateData: any = { firstName: firstName || undefined, lastName: lastName || undefined };
+    const createData: any = { email, firstName: firstName || null, lastName: lastName || null };
     const u = await prisma.user.upsert({
       where: { email },
-      update: { firstName: firstName || undefined, lastName: lastName || undefined },
-      create: { email, firstName: firstName || null, lastName: lastName || null },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      update: updateData,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      create: createData,
       select: { id: true },
     });
     userId = u.id;
