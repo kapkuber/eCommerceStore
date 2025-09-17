@@ -35,6 +35,7 @@ export default function CheckoutClient() {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [phone, setPhone] = useState("");
+  const [prefilledAddress, setPrefilledAddress] = useState(false);
 
   // 👇 Pre-fill from session (without clobbering user edits)
   useEffect(() => {
@@ -59,6 +60,27 @@ export default function CheckoutClient() {
       }
     })();
   }, []);
+
+  // Prefill address from saved address if signed in
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    (async () => {
+      try {
+        const res = await fetch("/api/account/addresses/default", { cache: "no-store" });
+        if (!res.ok) return;
+        const a = await res.json();
+        if (!a) return;
+        if (!address && a.line1) setAddress(String(a.line1));
+        if (!address2 && a.line2 != null) setAddress2(String(a.line2));
+        if (!city && a.city) setCity(String(a.city));
+        if (!state && (a.region || a.state)) setState(String(a.region || a.state));
+        if (!zip && (a.postal || a.zip)) setZip(String(a.postal || a.zip));
+        if (!country && a.country) setCountry(String(a.country));
+        if (a.line1 || a.city || a.region || a.state || a.postal || a.zip || a.country) setPrefilledAddress(true);
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   const subtotal = cart.total;
   const shipping = 0;
@@ -202,14 +224,14 @@ export default function CheckoutClient() {
                 placeholder="Address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="sm:col-span-2 rounded-lg border px-3 py-2"
+                className={`sm:col-span-2 rounded-lg border px-3 py-2 ${prefilledAddress ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="address-line1"
               />
               <input
                 placeholder="Apartment, suite, etc. (optional)"
                 value={address2}
                 onChange={(e) => setAddress2(e.target.value)}
-                className="sm:col-span-2 rounded-lg border px-3 py-2"
+                className={`sm:col-span-2 rounded-lg border px-3 py-2 ${prefilledAddress ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="address-line2"
               />
 
@@ -217,21 +239,21 @@ export default function CheckoutClient() {
                 placeholder="City"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="rounded-lg border px-3 py-2"
+                className={`rounded-lg border px-3 py-2 ${prefilledAddress ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="address-level2"
               />
               <input
                 placeholder="State"
                 value={state}
                 onChange={(e) => setState(e.target.value)}
-                className="rounded-lg border px-3 py-2"
+                className={`rounded-lg border px-3 py-2 ${prefilledAddress ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="address-level1"
               />
               <input
                 placeholder="ZIP code"
                 value={zip}
                 onChange={(e) => setZip(e.target.value)}
-                className="rounded-lg border px-3 py-2"
+                className={`rounded-lg border px-3 py-2 ${prefilledAddress ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="postal-code"
               />
               <input
@@ -292,18 +314,22 @@ export default function CheckoutClient() {
             ) : (
               cart.items.map((it) => (
                 <div key={it.id} className="flex items-start gap-3">
-                  <div className="relative h-14 w-14 overflow-hidden rounded-lg border bg-neutral-50">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={it.imageUrl || ""} alt={it.title} className="h-full w-full object-cover" />
-                    <div className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-800 text-[10px] text-white">
+                  {/* Image + qty badge (badge outside the rounded box so it's not clipped) */}
+                  <div className="relative shrink-0">
+                    <div className="h-16 w-16 overflow-hidden rounded-xl border bg-neutral-50">
+                      {it.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={it.imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full bg-neutral-100" />
+                      )}
+                    </div>
+                    <div className="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-neutral-800 text-[10px] text-white">
                       {it.qty}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{it.title}</div>
-                    {it.variantLabel && (
-                      <div className="text-xs text-neutral-500 truncate">{it.variantLabel}</div>
-                    )}
+                    <div className="truncate text-sm font-medium">{it.variantLabel || it.title}</div>
                   </div>
                   <div className="shrink-0 text-sm font-semibold">
                     ${(it.line / 100).toFixed(2)}

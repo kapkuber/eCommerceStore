@@ -12,7 +12,7 @@ export default function AccountTopNav({ isAdmin = false }: { isAdmin?: boolean }
   items.push({ label: "SIGN OUT", onClick: () => signOut({ callbackUrl: "/login", redirect: true }) });
 
   return (
-    <nav className="sticky top-0 z-30 w-full border-b bg-[#58a75a] py-7 text-white">
+    <nav className="sticky top-0 z-30 w-full border-b bg-[#525252] py-7 text-white">
       <ul className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 text-xs font-extrabold tracking-wide">
         {items.map((it) => (
           <li key={it.label}>
