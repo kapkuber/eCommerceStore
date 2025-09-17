@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,7 +45,15 @@ export default async function OrderConfirmationPage({ params }: { params: Promis
           <span>${(total / 100).toFixed(2)}</span>
         </div>
       </section>
+
+      <div className="mt-8">
+        <Link
+          href="/"
+          className="inline-flex w-full items-center justify-center rounded-full border px-4 py-3 text-sm font-semibold hover:bg-neutral-50"
+        >
+          Return to store
+        </Link>
+      </div>
     </main>
   );
 }
-
