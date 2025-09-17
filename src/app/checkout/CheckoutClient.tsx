@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
-import { useSession } from "next-auth/react";
+import { loadStripe, type PaymentRequest as StripePaymentRequest } from "@stripe/stripe-js";
+import { Elements, PaymentElement, PaymentRequestButtonElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { useSession, signOut } from "next-auth/react";
 
 type CartItem = {
   id: string;
@@ -89,54 +89,70 @@ export default function CheckoutClient() {
   const isSignedIn = status === "authenticated";
 
   return (
+    <Elements
+      stripe={stripePromise}
+      options={clientSecret ? { clientSecret, appearance } : undefined}
+      key={clientSecret || "no-client"}
+    >
     <main className="mx-auto max-w-6xl px-4 py-8 lg:grid lg:grid-cols-12 lg:gap-8">
       {/* LEFT: Contact / Delivery / Payment */}
       <section className="lg:col-span-7">
         <h1 className="sr-only">Checkout</h1>
 
-        {/* Express checkout (placeholders) */}
-        <div className="rounded-2xl border p-4">
-          <div className="text-sm font-medium">Express checkout</div>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {["PayPal", "Amazon Pay", "Google Pay"].map((t) => (
-              <button
-                key={t}
-                className="h-10 rounded-lg border bg-white text-sm font-semibold hover:bg-neutral-50"
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Express checkout (temporarily disabled) */}
+        {false && (
+          <div className="rounded-2xl border p-4">
+            <div className="text-sm font-medium">Express checkout</div>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Google Pay / Apple Pay via Stripe Payment Request */}
+              <PaymentRequestExpress amount={total} clientSecret={clientSecret} email={email} />
 
-        {/* OR divider */}
-        <div className="my-5 flex items-center gap-4 text-xs text-neutral-500">
-          <div className="h-px flex-1 bg-neutral-200" />
-          OR
-          <div className="h-px flex-1 bg-neutral-200" />
-        </div>
+              {/* PayPal Buttons */}
+              <PayPalExpress amount={total} />
+            </div>
+          </div>
+        )}
+
+        {/* OR divider (disabled with express) */}
+        {false && (
+          <div className="my-5 flex items-center gap-4 text-xs text-neutral-500">
+            <div className="h-px flex-1 bg-neutral-200" />
+            OR
+            <div className="h-px flex-1 bg-neutral-200" />
+          </div>
+        )}
 
         <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
           {/* Contact */}
           <div className="rounded-2xl border p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold">Contact</h2>
+              <h2 className="text-base font-semibold">Email</h2>
               {/* 👇 Hide if signed in */}
               {!isSignedIn && (
-                <a href="/api/auth/signin" className="text-sm text-green-700 hover:underline">
+                <a href="/login?callbackUrl=%2Fcheckout" className="text-sm text-green-700 hover:underline">
                   Sign in
                 </a>
               )}
             </div>
-            <input
-              type="email"
-              required
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2"
-              autoComplete="email"
-            />
+            {isSignedIn ? (
+              <SignedInEmailRow
+                email={session?.user?.email || email}
+                name={session?.user?.name || ""}
+                onSignOut={async () => {
+                  await signOut({ callbackUrl: "/checkout" });
+                }}
+              />
+            ) : (
+              <input
+                type="email"
+                required
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2"
+                autoComplete="email"
+              />
+            )}
             <label className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" className="h-4 w-4" /> Email me with news and offers
             </label>
@@ -240,7 +256,7 @@ export default function CheckoutClient() {
             <h2 className="mb-3 text-base font-semibold">Payment</h2>
             <p className="text-xs text-neutral-600">All transactions are secure and encrypted.</p>
             {clientSecret && (
-              <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
+              <>
                 <PaymentElement className="mt-3" />
                 <StripePayNow
                   amount={total}
@@ -248,12 +264,8 @@ export default function CheckoutClient() {
                   name={`${first} ${last}`.trim()}
                   address={{ line1: address, line2: address2, city, state, postal_code: zip, country }}
                 />
-              </Elements>
+              </>
             )}
-
-            <label className="mt-3 flex items-center gap-2 text-sm text-neutral-700">
-              <input type="checkbox" className="h-4 w-4" /> Save my information for a faster checkout
-            </label>
           </div>
         </form>
       </section>
@@ -334,6 +346,199 @@ export default function CheckoutClient() {
         </div>
       </aside>
     </main>
+    </Elements>
+  );
+}
+
+function PaymentRequestExpress({ amount, clientSecret, email }: { amount: number; clientSecret: string | null; email: string }) {
+  const stripe = useStripe();
+  const [ready, setReady] = useState(false);
+  const [paymentRequest, setPaymentRequest] = useState<StripePaymentRequest | null>(null);
+
+  useEffect(() => {
+    if (!stripe || amount <= 0) return;
+    const pr = stripe.paymentRequest({
+      country: 'US',
+      currency: 'usd',
+      total: { label: 'Total', amount },
+      requestPayerEmail: true,
+    });
+    pr.canMakePayment().then((res) => {
+      if (res) {
+        setPaymentRequest(pr);
+        setReady(true);
+      } else {
+        setReady(false);
+      }
+    });
+
+    pr.on('paymentmethod', async (ev) => {
+      try {
+        // Reuse the existing PI if present; otherwise create a fresh one
+        let cs = clientSecret;
+        if (!cs) {
+          const resp = await fetch('/api/stripe/checkout', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ amount, currency: 'usd' }),
+          });
+          const j = await resp.json();
+          cs = j?.clientSecret || null;
+        }
+        if (!cs) throw new Error('Missing client secret');
+
+        const confirm = await stripe!.confirmCardPayment(cs, {
+          payment_method: ev.paymentMethod.id,
+          receipt_email: email || undefined,
+        }, { handleActions: false });
+
+        if (confirm.error) {
+          ev.complete('fail');
+          return;
+        }
+        ev.complete('success');
+
+        if (confirm.paymentIntent && confirm.paymentIntent.status === 'requires_action') {
+          await stripe!.confirmCardPayment(cs);
+        }
+
+        // finalize order (reuse existing flow)
+        const form = new FormData();
+        form.append('email', email);
+        form.append('name', '');
+        form.append('line1', '');
+        form.append('line2', '');
+        form.append('city', '');
+        form.append('state', '');
+        form.append('postal', '');
+        form.append('country', 'US');
+        form.append('paymentIntentId', confirm.paymentIntent?.id || '');
+        await fetch('/api/stripe/checkout', { method: 'POST', body: form });
+        window.location.href = '/account';
+      } catch (e) {
+        ev.complete('fail');
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripe, amount, clientSecret]);
+
+  if (!stripe || !ready || !paymentRequest) return (
+    <div className="flex h-10 items-center justify-center rounded-lg border text-sm text-neutral-500">
+      Google/Apple Pay unavailable
+    </div>
+  );
+  return (
+    <div className="overflow-hidden rounded-lg border p-1">
+      <PaymentRequestButtonElement options={{ paymentRequest }} />
+    </div>
+  );
+}
+
+function PayPalExpress({ amount }: { amount: number }) {
+  const [loaded, setLoaded] = useState(false);
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+  useEffect(() => {
+    if (!clientId) return;
+    const url = new URL('https://www.paypal.com/sdk/js');
+    url.searchParams.set('client-id', clientId);
+    url.searchParams.set('currency', 'USD');
+    url.searchParams.set('intent', 'capture');
+    const script = document.createElement('script');
+    script.src = url.toString();
+    script.async = true;
+    script.onload = () => setLoaded(true);
+    document.body.appendChild(script);
+    return () => { script.remove(); };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!loaded || amount <= 0) return;
+    const w = window as any;
+    if (!w.paypal?.Buttons) return;
+    const container = document.getElementById('paypal-express-container');
+    if (!container) return;
+    container.innerHTML = '';
+    w.paypal.Buttons({
+      style: { layout: 'horizontal', height: 40, shape: 'rect' },
+      createOrder: async () => {
+        const res = await fetch('/api/paypal/create-order', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ amount, currency: 'USD' }),
+        });
+        const j = await res.json();
+        return j.id;
+      },
+      onApprove: async (data: any) => {
+        await fetch('/api/paypal/capture-order', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ orderId: data.orderID }),
+        });
+        window.location.href = '/account';
+      },
+      onError: () => {
+        // no-op; surface via toast in real app
+      },
+    }).render('#paypal-express-container');
+  }, [loaded, amount]);
+
+  if (!clientId) {
+    return <div className="flex h-10 items-center justify-center rounded-lg border text-sm">Configure PayPal</div>;
+  }
+  if (amount <= 0) {
+    return <div className="flex h-10 items-center justify-center rounded-lg border text-sm">Cart is empty</div>;
+  }
+  return <div id="paypal-express-container" className="h-10" />;
+}
+
+function SignedInEmailRow({
+  email,
+  name,
+  onSignOut,
+}: {
+  email: string;
+  name: string;
+  onSignOut: () => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(false);
+  const initials = (name || email || "?")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase())
+    .join("") || "?";
+
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-200 text-sm font-semibold text-neutral-800">
+            {initials}
+          </div>
+          <div className="text-sm text-neutral-900">{email}</div>
+        </div>
+        <button
+          type="button"
+          aria-label="Account menu"
+          className="h-8 w-8 rounded-full text-neutral-700 hover:bg-neutral-100"
+          onClick={() => setOpen((v) => !v)}
+        >
+          ⋯
+        </button>
+      </div>
+      {open && (
+        <div className="absolute right-0 z-10 mt-2 w-36 overflow-hidden rounded-md border bg-white shadow">
+          <button
+            type="button"
+            className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50"
+            onClick={() => onSignOut()}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

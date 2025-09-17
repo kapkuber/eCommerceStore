@@ -2,20 +2,22 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const search = useSearchParams();
+  const callbackUrl = search?.get('callbackUrl') || '/account';
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     const res = await signIn('credentials', { redirect: false, email, password });
     if (res?.ok) {
-      router.push('/account');
+      router.push(callbackUrl);
     } else {
       setError('Invalid email or password');
     }
