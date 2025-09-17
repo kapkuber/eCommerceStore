@@ -12,12 +12,17 @@ export async function POST(req: Request) {
   if (contentType.includes('application/json')) {
     const body = await req.json();
     email = String(body.email || '').toLowerCase();
-    name = String(body.name || '');
+    // Prefer explicit first/last if provided
+    firstName = String(body.firstName || '').trim();
+    lastName = String(body.lastName || '').trim();
+    name = String(body.name || '').trim();
     password = String(body.password || '');
   } else {
     const fd = await req.formData();
     email = String(fd.get('email') || '').toLowerCase();
-    name = String(fd.get('name') || '');
+    firstName = String(fd.get('firstName') || '').trim();
+    lastName = String(fd.get('lastName') || '').trim();
+    name = String(fd.get('name') || '').trim();
     password = String(fd.get('password') || '');
   }
 
@@ -29,7 +34,7 @@ export async function POST(req: Request) {
   }
 
   // Split full name into first/last (simple fallback)
-  if (name) {
+  if ((!firstName && !lastName) && name) {
     const parts = name.trim().split(/\s+/);
     firstName = parts[0] || '';
     lastName = parts.slice(1).join(' ') || '';
@@ -37,8 +42,11 @@ export async function POST(req: Request) {
 
   try {
     const hashed = await hashPassword(password);
-    const user = await prisma.user.create({ data: { email, firstName: firstName || null, lastName: lastName || null, password: hashed } });
-    return NextResponse.json({ id: user.id, email: user.email, name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() });
+    // Use a typed-safe select to avoid TS errors when Prisma types lag
+    const createData: any = { email, firstName: firstName || null, lastName: lastName || null, password: hashed };
+    const user = await prisma.user.create({ data: createData, select: { id: true, email: true } });
+    const displayName = `${firstName} ${lastName}`.trim();
+    return NextResponse.json({ id: user.id, email: user.email, name: displayName });
   } catch (err: any) {
     // Handle unique constraint race condition cleanly
     if (err?.code === 'P2002') {

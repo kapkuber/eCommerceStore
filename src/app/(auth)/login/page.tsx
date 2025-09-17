@@ -45,7 +45,7 @@ export default function LoginPage() {
             className="w-full rounded border px-3 py-2"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button className="w-full rounded bg-black px-4 py-2 text-white">Sign in</button>
+          <button className="w-full rounded bg-black px-4 py-2 text-white cursor-pointer">Sign in</button>
         </form>
         <p className="mt-4 text-sm text-center">
           No account? <a className="underline" href="/register">Register</a>
