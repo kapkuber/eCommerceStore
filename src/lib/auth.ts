@@ -31,7 +31,8 @@ export const authOptions: NextAuthOptions = {
           await new Promise((r) => setTimeout(r, 150));
           return null;
         }
-        return { id: user.id, name: user.name || null, email: user.email } as any;
+        const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || null;
+        return { id: user.id, name: fullName, email: user.email } as any;
       },
     }),
   ],

@@ -22,6 +22,9 @@ export async function POST(req: Request) {
     (fd.get("shipping_name") as string) ||
     session?.user?.name ||
     "";
+  const nameParts = name.trim().split(/\s+/);
+  const firstName = nameParts[0] || "";
+  const lastName = nameParts.slice(1).join(" ") || "";
   const email =
     (fd.get("email") as string) ||
     (fd.get("customer_email") as string) ||
@@ -88,8 +91,8 @@ export async function POST(req: Request) {
   if (!userId && email && /.+@.+\..+/.test(email)) {
     const u = await prisma.user.upsert({
       where: { email },
-      update: { name: name || undefined },
-      create: { email, name: name || null },
+      update: { firstName: firstName || undefined, lastName: lastName || undefined },
+      create: { email, firstName: firstName || null, lastName: lastName || null },
       select: { id: true },
     });
     userId = u.id;
@@ -113,31 +116,36 @@ export async function POST(req: Request) {
   });
 
   // Save shipping + billing addresses (billing mirrors shipping for now)
+  // If a user is signed in, we try to reuse an identical address; otherwise we create order-only addresses
   if (line1 || city || state || postal || country) {
-    const shipping = await prisma.address.create({
-      data: {
-        userId,
-        type: "SHIPPING",
+    async function ensureAddress(type: "SHIPPING" | "BILLING") {
+      const base = {
         line1: line1 || "",
         line2: line2 || null,
         city: city || "",
         region: state || null,
         postal: postal || "",
-        country: country || "US",
-      },
-    });
-    const billing = await prisma.address.create({
-      data: {
-        userId,
-        type: "BILLING",
-        line1: line1 || "",
-        line2: line2 || null,
-        city: city || "",
-        region: state || null,
-        postal: postal || "",
-        country: country || "US",
-      },
-    });
+        country: (country || "US") as string,
+        type,
+      } as const;
+
+      // When user is signed in, attempt to reuse an existing identical address
+      if (userId) {
+        const existing = await prisma.address.findFirst({
+          where: { userId, type, line1: base.line1, line2: base.line2, city: base.city, region: base.region, postal: base.postal, country: base.country },
+        });
+        if (existing) return existing;
+        return prisma.address.create({ data: { userId, ...base } });
+      }
+      // Guest checkout: store address unattached to a user (still linked on Order)
+      return prisma.address.create({ data: { userId: null, ...base } });
+    }
+
+    const [shipping, billing] = await Promise.all([
+      ensureAddress("SHIPPING"),
+      ensureAddress("BILLING"),
+    ]);
+
     await prisma.order.update({
       where: { id: order.id },
       data: { shippingAddressId: shipping.id, billingAddressId: billing.id },

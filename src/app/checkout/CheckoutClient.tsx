@@ -87,6 +87,7 @@ export default function CheckoutClient() {
   const appearance = { theme: "stripe" as const };
 
   const isSignedIn = status === "authenticated";
+  const prefilledName = isSignedIn && Boolean(session?.user?.name?.trim());
 
   return (
     <Elements
@@ -180,14 +181,14 @@ export default function CheckoutClient() {
                 placeholder="First name"
                 value={first}
                 onChange={(e) => setFirst(e.target.value)}
-                className="rounded-lg border px-3 py-2"
+                className={`rounded-lg border px-3 py-2 ${prefilledName ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="given-name"
               />
               <input
                 placeholder="Last name"
                 value={last}
                 onChange={(e) => setLast(e.target.value)}
-                className="rounded-lg border px-3 py-2"
+                className={`rounded-lg border px-3 py-2 ${prefilledName ? "bg-neutral-100 text-neutral-500" : ""}`}
                 autoComplete="family-name"
               />
 
@@ -413,8 +414,11 @@ function PaymentRequestExpress({ amount, clientSecret, email }: { amount: number
         form.append('postal', '');
         form.append('country', 'US');
         form.append('paymentIntentId', confirm.paymentIntent?.id || '');
-        await fetch('/api/stripe/checkout', { method: 'POST', body: form });
-        window.location.href = '/account';
+        const finalize = await fetch('/api/checkout', { method: 'POST', body: form });
+        try {
+          const j = await finalize.json();
+          if (j?.url) window.location.href = j.url; else window.location.href = '/account';
+        } catch { window.location.href = '/account'; }
       } catch (e) {
         ev.complete('fail');
       }
@@ -594,7 +598,7 @@ function StripePayNow({
 
         // ⚠️ Make sure this path matches your route file:
         // If your file is app/api/stripe/checkout/route.ts then POST to /api/stripe/checkout
-        const res = await fetch("/api/stripe/checkout", { method: "POST", body: form });
+        const res = await fetch("/api/checkout", { method: "POST", body: form });
 
         try {
           const j = await res.json();

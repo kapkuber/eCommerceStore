@@ -6,6 +6,8 @@ export async function POST(req: Request) {
   const contentType = req.headers.get('content-type') || '';
   let email = '';
   let name = '';
+  let firstName = '';
+  let lastName = '';
   let password = '';
   if (contentType.includes('application/json')) {
     const body = await req.json();
@@ -26,10 +28,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid email or password < 8 characters' }, { status: 400 });
   }
 
+  // Split full name into first/last (simple fallback)
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    firstName = parts[0] || '';
+    lastName = parts.slice(1).join(' ') || '';
+  }
+
   try {
     const hashed = await hashPassword(password);
-    const user = await prisma.user.create({ data: { email, name, password: hashed } });
-    return NextResponse.json({ id: user.id, email: user.email, name: user.name });
+    const user = await prisma.user.create({ data: { email, firstName: firstName || null, lastName: lastName || null, password: hashed } });
+    return NextResponse.json({ id: user.id, email: user.email, name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() });
   } catch (err: any) {
     // Handle unique constraint race condition cleanly
     if (err?.code === 'P2002') {
