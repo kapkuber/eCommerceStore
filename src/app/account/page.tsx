@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import SignOutButton from './SignOutButton';
 import AccountTopNav from './AccountTopNav';
+import AddressCard from './AddressCard';
+import EditAddressActions from './EditAddressActions';
+import AddressCreateInline from './AddressCreateInline';
 import BulkDeleteBar from './BulkDeleteBar';
 import { prisma } from '@/lib/db';
 
@@ -174,18 +177,16 @@ export default async function AccountPage() {
       <section id="shipping-addresses" className="mt-12 px-6">
         <h2 className="text-3xl font-extrabold tracking-tight">Shipping Addresses</h2>
         {addresses.length === 0 ? (
-          <p className="mt-4 text-sm text-neutral-600">No saved addresses.</p>
+          <>
+            {/* Only show Add button when there is no address */}
+            <EditAddressActions />
+            <p className="mt-4 text-sm text-neutral-600">No saved addresses.</p>
+            <AddressCreateInline />
+          </>
         ) : (
           <div className="mt-4 grid gap-4 sm:max-w-lg">
             {addresses.map((a) => (
-              <div key={a.id} className="rounded-xl border bg-neutral-50 p-4">
-                <div className="text-xs font-semibold tracking-wide text-neutral-500">CURRENT ADDRESS</div>
-                <div className="mt-3 text-sm">
-                  <div>{a.line1}{a.line2 ? `, ${a.line2}` : ''}</div>
-                  <div>{[a.city, a.region, a.postal].filter(Boolean).join(', ')}</div>
-                  <div>{a.country}</div>
-                </div>
-              </div>
+              <AddressCard key={a.id} address={{ id: a.id, line1: a.line1, line2: a.line2, city: a.city, region: a.region, postal: a.postal, country: a.country }} />
             ))}
           </div>
         )}
