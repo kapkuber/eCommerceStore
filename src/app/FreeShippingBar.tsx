@@ -32,9 +32,9 @@ type FreeShippingBarProps = {
  * Recommended placement: in `app/layout.tsx` so it appears on every page.
  */
 export default function FreeShippingBar({
-  messages = ["Free Shipping on All Orders $80+!"],
+  messages = ["Free Shipping on All Orders $80+"],
   buttonText = "SHOP NOW",
-  buttonHref,
+  buttonHref = "",
   backgroundColor = "#bfe0f6",
   textColor = "#000000",
   pageHideUrls = [],
@@ -92,10 +92,10 @@ export default function FreeShippingBar({
               <span className="m-promo-hide">{safeMessages[idx]}</span>
             </div>
 
-            {buttonHref && buttonText ? (
-              <a className="navbar__slide__btn" href={buttonHref}>
+            {buttonText ? (
+              <span aria-hidden="true" className="navbar__slide__btn select-none">
                 {buttonText}
-              </a>
+              </span>
             ) : null}
           </div>
         </div>
