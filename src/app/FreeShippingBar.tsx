@@ -151,7 +151,7 @@ export default function FreeShippingBar({
           border: none;
           border-radius: 0.25em;
           font-size: 16px;
-          font-weight: bold;
+          font-weight: 900;
           line-height: 2em;
           text-align: center;
           text-decoration: none;
@@ -159,9 +159,10 @@ export default function FreeShippingBar({
           width: auto;
           margin: 0;
           padding: 0 0.75em;
-          cursor: pointer;
+          cursor: default; /* badge, not clickable */
           appearance: none;
           outline: none;
+          pointer-events: none; /* ensure no clicks */
 
           /* These match the example’s animation fields */
           transition: height 0ms linear 300ms;
