@@ -82,6 +82,53 @@ export default async function AccountPage() {
         <p className="mt-2 text-sm text-neutral-600">Signed in as {session.user?.email}</p>
       </section>
 
+      {/* Shipping Addresses */}
+      <section id="shipping-addresses" className="mt-12 px-6">
+        <h2 className="text-3xl font-extrabold tracking-tight">Shipping Addresses</h2>
+        {addresses.length === 0 ? (
+          <>
+            {/* Only show Add button when there is no address */}
+            <EditAddressActions />
+            <p className="mt-4 text-sm text-neutral-600">No saved addresses.</p>
+            <AddressCreateInline />
+          </>
+        ) : (
+          <div className="mt-4 grid gap-4 sm:max-w-lg">
+            {addresses.map((a) => (
+              <AddressCard key={a.id} address={{ id: a.id, line1: a.line1, line2: a.line2, city: a.city, region: a.region, postal: a.postal, country: a.country }} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Order History */}
+      <section id="order-history" className="mt-12 px-6">
+        <h2 className="text-3xl font-extrabold tracking-tight">Order History</h2>
+        {orders.length === 0 ? (
+          <p className="mt-4 text-sm text-neutral-600">You haven't placed any orders yet.</p>
+        ) : (
+          <ul className="mt-4 divide-y rounded-xl border">
+            {orders.map((o) => (
+              <li key={o.id} className="p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="font-semibold">Order #{o.id.slice(0,8)}</div>
+                  <div className="text-neutral-600">${(o.totalCents/100).toFixed(2)}</div>
+                </div>
+                <div className="mt-1 text-xs text-neutral-600">{new Date(o.createdAt).toLocaleString()} — {o.status}</div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-700">
+                  {o.items.map((it) => (
+                    <span key={it.id} className="rounded border px-2 py-1">
+                      {it.variant.product.title} × {it.qty}
+                    </span>
+                  ))}
+                </div>
+                <a href={`/orders/${o.id}`} className="mt-3 inline-block text-xs font-semibold underline">View details</a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      
       {isAdmin && (
         <section id="product-dashboard" className="mt-12 space-y-6 px-6">
           <div className="flex items-center justify-between">
@@ -172,53 +219,6 @@ export default async function AccountPage() {
           </div>
         </section>
       )}
-
-      {/* Shipping Addresses */}
-      <section id="shipping-addresses" className="mt-12 px-6">
-        <h2 className="text-3xl font-extrabold tracking-tight">Shipping Addresses</h2>
-        {addresses.length === 0 ? (
-          <>
-            {/* Only show Add button when there is no address */}
-            <EditAddressActions />
-            <p className="mt-4 text-sm text-neutral-600">No saved addresses.</p>
-            <AddressCreateInline />
-          </>
-        ) : (
-          <div className="mt-4 grid gap-4 sm:max-w-lg">
-            {addresses.map((a) => (
-              <AddressCard key={a.id} address={{ id: a.id, line1: a.line1, line2: a.line2, city: a.city, region: a.region, postal: a.postal, country: a.country }} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Order History */}
-      <section id="order-history" className="mt-12 px-6">
-        <h2 className="text-3xl font-extrabold tracking-tight">Order History</h2>
-        {orders.length === 0 ? (
-          <p className="mt-4 text-sm text-neutral-600">You haven't placed any orders yet.</p>
-        ) : (
-          <ul className="mt-4 divide-y rounded-xl border">
-            {orders.map((o) => (
-              <li key={o.id} className="p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="font-semibold">Order #{o.id.slice(0,8)}</div>
-                  <div className="text-neutral-600">${(o.totalCents/100).toFixed(2)}</div>
-                </div>
-                <div className="mt-1 text-xs text-neutral-600">{new Date(o.createdAt).toLocaleString()} — {o.status}</div>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs text-neutral-700">
-                  {o.items.map((it) => (
-                    <span key={it.id} className="rounded border px-2 py-1">
-                      {it.variant.product.title} × {it.qty}
-                    </span>
-                  ))}
-                </div>
-                <a href={`/orders/${o.id}`} className="mt-3 inline-block text-xs font-semibold underline">View details</a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </main>
   );
 }

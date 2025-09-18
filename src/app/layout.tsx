@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SearchTrigger from "./search/SearchTrigger";
 import CartTrigger from "./cart/CartTrigger";
-import Providers from "./providers"; // 👈 import your SessionProvider wrapper
+import Providers from "./providers";
+import FreeShippingBar from "./FreeShippingBar";
 
 // icons for other nav items
 import { Info, Lightbulb, User } from "lucide-react";
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="h-full bg-white">
       <body className="min-h-full text-neutral-900 antialiased">
+        <FreeShippingBar/>
         <Providers>
           <header className="sticky top-0 z-40 bg-black text-white">
             <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
