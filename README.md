@@ -112,7 +112,7 @@ npm run dev
 
 ## Deployment
 
-You can deploy this Next.js app to Vercel (recommended) or any host that can run a Node server. You’ll also need managed Postgres, Redis, and Stripe keys.
+You can deploy this Next.js app to Vercel or any host that can run a Node server. You’ll also need managed Postgres, Redis, and Stripe keys.
 
 1) Provision services
 - Postgres (Neon, Supabase, RDS, etc.) — note the connection string
