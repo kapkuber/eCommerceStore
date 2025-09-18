@@ -32,7 +32,7 @@ type FreeShippingBarProps = {
  * Recommended placement: in `app/layout.tsx` so it appears on every page.
  */
 export default function FreeShippingBar({
-  messages = ["Free Shipping on All Orders $75+!"],
+  messages = ["Free Shipping on All Orders $80+!"],
   buttonText = "SHOP NOW",
   buttonHref,
   backgroundColor = "#bfe0f6",

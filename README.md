@@ -109,3 +109,42 @@ npm run dev
 
 - Production should use a real Redis and a strong, rotated `NEXTAUTH_SECRET`.
 - Password policy checks and rate limiting can be added to the auth routes for extra protection.
+
+## Deployment
+
+You can deploy this Next.js app to Vercel (recommended) or any host that can run a Node server. You’ll also need managed Postgres, Redis, and Stripe keys.
+
+1) Provision services
+- Postgres (Neon, Supabase, RDS, etc.) — note the connection string
+- Redis (Upstash, Valkey/Redis provider) — note the connection string
+- Stripe account — get secret key and (optional) webhook secret
+
+2) Configure environment variables on your host
+
+```
+DATABASE_URL=postgres://user:pass@host:5432/db
+NEXTAUTH_URL=https://your-domain
+NEXTAUTH_SECRET=<long-random-string>
+STRIPE_SECRET_KEY=sk_live_or_test
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_or_test
+REDIS_URL=redis://... (or provider URL)
+# Optional if using webhooks
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+3) Build and run migrations in CI/Deploy step
+
+```
+npm run build
+npx prisma migrate deploy --schema public/prisma/schema.prisma
+```
+
+4) Start the app
+- Vercel: push to your repo; set a Build Command to also run `prisma migrate deploy` (via a postbuild script or deploy hook). Vercel handles the server.
+- Other hosts (Fly.io/Render/Railway/VPS): run `next start` or the standalone server, and put it behind TLS (Nginx/Caddy).
+
+5) (Optional) Stripe webhook
+- Add endpoint `https://your-domain/api/stripe/webhook` for events like `payment_intent.succeeded`.
+- Set `STRIPE_WEBHOOK_SECRET` in your environment.
+
+Notes (Windows/OneDrive): if `npx prisma generate` fails with EPERM locally, stop Node, delete `node_modules/.prisma`, pause OneDrive, reinstall, then regenerate. You can also set `PRISMA_CLIENT_ENGINE_TYPE=library` while generating.
