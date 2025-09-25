@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/db';
 import { verifyPassword } from '@/lib/password';
 
@@ -35,8 +36,33 @@ export const authOptions: NextAuthOptions = {
         return { id: user.id, name: fullName, email: user.email } as any;
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Only run for OAuth (Google) sign in
+      if (account?.provider === 'google') {
+        const email = user.email?.toLowerCase();
+        if (!email) return false;
+        let dbUser = await prisma.user.findUnique({ where: { email } });
+        if (!dbUser) {
+          // Cast profile to Google profile type for given_name/family_name
+          const googleProfile = profile as { given_name?: string; family_name?: string };
+          dbUser = await prisma.user.create({
+            data: {
+              email,
+              firstName: googleProfile.given_name || '',
+              lastName: googleProfile.family_name || '',
+              // No password for OAuth users
+            },
+          });
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.userId = (user as any).id;
